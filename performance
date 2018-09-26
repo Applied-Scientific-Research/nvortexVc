@@ -75,3 +75,85 @@ Theoretical peak flops are:
 2 arithmetic ops per FMA
 3.5 GHz
 224 GFlop/s !
+
+
+On moss
+Intel i7-5960X (Haswell, 8 cores, 16 threads, overclocked to 4.2 GHz)
+Theoretical peak flops is 537.6 (4.2*8*2*8) ?
+GCC 6.3.0
+g++ -O3 -mavx2 -mfma -I/opt/Vc/include -fopenmp -o nbody3omp nbody3.cpp -L/opt/Vc/lib -lVc
+./nbody3omp -n=30000 6 2
+@time of Vc run:			[0.103152] seconds
+@time of Vc run:			[0.080270] seconds
+@time of Vc run:			[0.069926] seconds
+@time of Vc run:			[0.067809] seconds
+@time of Vc run:			[0.067166] seconds
+@time of Vc run:			[0.067681] seconds
+[nbody Vc 01]:		[0.067166] seconds
+              		[375.190022] GFlop/s
+   particle 0 vel -304.752 -345.224 517.879
+   particle 1 vel -266.286 -1351.16 75.7815
+
+@time of serial run:			[0.854116] seconds
+@time of serial run:			[0.854265] seconds
+[nbody serial]:		[0.854116] seconds
+               		[29.504193] GFlop/s
+   particle 0 vel -304.657 -345.149 517.847
+   particle 1 vel -266.257 -1351.28 75.7719
+
+			(12.716x speedup using Vc)
+
+
+On zen0
+AMD Ryzen 7 2700X (Zen+, 8 cores, 16 threads, clocked at 4.2 GHz)
+Theoretical peak flops is probably also 537.6
+GCC 6.3.0
+vortex3Dvel_mt1d using ISPC peaked at 255.133 GFlop/s
+g++ -O3 -mfma -mavx2 -I/opt/Vc/include -fopenmp -o nbody3omp nbody3.cpp -L/opt/Vc/lib -lVc
+./nbody3omp -n=100000
+@time of Vc run:			[1.095229] seconds
+@time of Vc run:			[1.043890] seconds
+@time of Vc run:			[1.046015] seconds
+@time of Vc run:			[1.100944] seconds
+[nbody Vc 01]:		[1.043890] seconds
+              		[268.227588] GFlop/s
+   particle 0 vel 1037.25 -637.683 1753.31
+   particle 1 vel 187.118 490.716 -278.194
+
+@time of serial run:			[15.665656] seconds
+@time of serial run:			[16.377987] seconds
+[nbody serial]:		[15.665656] seconds
+               		[17.873493] GFlop/s
+   particle 0 vel 1037.46 -637.577 1753.27
+   particle 1 vel 186.956 490.852 -278.327
+
+			(15.007x speedup using Vc)
+
+
+On sky0
+Intel i9-7960X (Skylake, 16 cores, 32 threads, clocked at 2.8 GHz)
+Theoretical is 2.8*16*2*8*2 = 1433.6 GFlop/s
+GCC 6.4.1
+g++ -O3 -mavx2 -mfma -I/data/opt/Vc/include -fopenmp -o nvortex3domp nvortex3d.cpp -L/data/opt/Vc/lib -lVc
+./nvortex3domp -n=30000 6 3
+@time of Vc run:			[0.047636] seconds
+@time of Vc run:			[0.024669] seconds
+@time of Vc run:			[0.024143] seconds
+@time of Vc run:			[0.023813] seconds
+@time of Vc run:			[0.024104] seconds
+@time of Vc run:			[0.024069] seconds
+[nbody Vc 01]:		[0.023813] seconds
+              		[1058.241673] GFlop/s
+   particle 0 vel -304.752 -345.224 517.879
+   particle 1 vel -266.286 -1351.16 75.7815
+
+@time of serial run:			[0.289849] seconds
+@time of serial run:			[0.292537] seconds
+@time of serial run:			[0.288618] seconds
+[nbody serial]:		[0.288618] seconds
+               		[87.312580] GFlop/s
+   particle 0 vel -304.657 -345.149 517.847
+   particle 1 vel -266.257 -1351.28 75.7719
+
+			(12.120x speedup using Vc)
+
