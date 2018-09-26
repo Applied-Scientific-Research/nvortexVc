@@ -1,0 +1,77 @@
+tp
+g++ 7.3.1
+Vc 1.4
+all single-threaded
+3500 MHz generally
+
+g++ -O2 -I/opt/Vc/include -o nbody nbody.cpp -L/opt/Vc/lib -lVc
+N	01		10		11		x86
+1000	6.123454	6.284245	9.373340	3.913688
+3000	23.379472	17.753971	15.536471	4.516090
+10000	23.378653	17.732863	15.510076	4.550656
+30000	23.806896	17.922455	15.671384	4.556926
+100000	22.836456	8.997499	10.768190	2.403402
+learned: performance invariant for method 01 only
+
+g++ -O3 -I/opt/Vc/include -o nbody nbody.cpp -L/opt/Vc/lib -lVc
+N	01		10		11		x86
+1000	6.064761	5.462331	8.709507	12.175130
+3000	23.880322	21.457287	18.057320	21.520290
+10000	23.363191	21.298773	17.794305	21.161516
+30000	23.914236	21.427657	18.021850	21.253868
+100000	22.582213	20.352929	10.939381	19.846256
+learned: -O3 must easily auto-vectorize this problem
+
+g++ -O2 -mavx2 -I/opt/Vc/include -o nbody nbody.cpp -L/opt/Vc/lib -lVc
+N	01		10		11		x86
+1000	11.990545	5.130963	8.178706	3.200775
+3000	31.567852	32.802327	25.031292	4.493476
+10000	46.919236	32.043334	23.180736	4.555473
+30000	41.875664	32.001548	23.858708	4.561815
+100000	36.760118	16.802745	19.723768	2.345250
+learned: AVX makes a big difference!
+
+g++ -O3 -mavx2 -I/opt/Vc/include -o nbody nbody.cpp -L/opt/Vc/lib -lVc
+N	01		10		11		x86
+1000	12.218529	11.859086	7.158660	17.655542
+3000	26.646226	45.224379	25.257078	48.468832
+10000	46.684651	43.735124	23.306463	43.721160
+30000	41.706928	43.443878	23.703180	44.422863
+100000	37.084541	41.329470	19.818247	41.231342
+learned: method 10 benefits more from -O3 than others
+
+other stuff:
+-funroll-loops has no effect
+-ffast-math SLOWS all three Vc methods down
+
+In comparison, the ispc version appears to run at 130-140 GFlop/s using all cores (openmp parallelism). That's amazing.
+Theoretical peak: 2 cores * 8 wide * 1 flop * 3.5 GHz = 56 GFlop/s
+Because we can't do FMA with AVX on this machine.
+And it also runs 113-120 GFlop/s on the 3d vortex vels+grads problem!
+How is that even possible?!?
+
+Building with OpenMP now, runs use all "4" cores
+
+g++ -O3 -mavx2 -I/opt/Vc/include -fopenmp -o nbodyomp nbody.cpp -L/opt/Vc/lib -lVc
+N	01		10		11		x86
+1000	21.032514	16.498546	29.015812	7.636730
+3000	53.721597	79.848463	61.968260	10.687947
+10000	89.141675	78.810089	54.371163	10.737958
+30000	85.118454	73.435934	51.774920	10.326946
+100000	78.726309	44.133413	43.992619	5.942652
+learned: OpenMP kills the -O3 advanage for x86!
+
+Method 01 is the fastest!
+
+
+Note:
+https://en.wikichip.org/wiki/intel/microarchitectures/skylake_(client)#Scheduler_Ports_.26_Execution_Units
+Since all vector registers are 256-bit (8-wide floats)
+And there are two FMA execution units
+Theoretical peak flops are:
+2 cores
+2 EUs
+8 wide floats
+2 arithmetic ops per FMA
+3.5 GHz
+224 GFlop/s !
