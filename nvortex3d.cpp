@@ -12,19 +12,19 @@
 
 using Vc::float_v;
 
-static float num_flops_per = 28.f;
+static float num_flops_per = 30.f;
 
 // serial (x86) instructions
 
 static inline void nbody_kernel_serial(float const sx, const float sy, const float sz,
                                        const float ssx,const float ssy,const float ssz, const float sr,
-                                       const float tx, const float ty, const float tz,
+                                       const float tx, const float ty, const float tz, const float tr,
                                        float* tax, float* tay, float* taz) {
-    // 28 flops
+    // 30 flops
     const float dx = sx - tx;
     const float dy = sy - ty;
     const float dz = sz - tz;
-    float r2 = dx*dx + dy*dy + dz*dz + sr*sr;
+    float r2 = dx*dx + dy*dy + dz*dz + sr*sr + tr*tr;
     r2 = 1.0/(r2*sqrt(r2));
     (*tax) += r2 * (dz*ssy - dy*ssz);
     (*tay) += r2 * (dx*ssz - dz*ssx);
@@ -33,7 +33,7 @@ static inline void nbody_kernel_serial(float const sx, const float sy, const flo
 
 void nbody_serial(const int numSrcs, const float sx[], const float sy[], const float sz[],
                                      const float ssx[],const float ssy[],const float ssz[], const float sr[],
-                  const int numTarg, const float tx[], const float ty[], const float tz[],
+                  const int numTarg, const float tx[], const float ty[], const float tz[], const float tr[],
                                      float tax[], float tay[], float taz[]) {
 
     #pragma omp parallel for
@@ -43,7 +43,7 @@ void nbody_serial(const int numSrcs, const float sx[], const float sy[], const f
         taz[i] = 0.0;
         for (int j = 0; j < numSrcs; j++) {
             nbody_kernel_serial(sx[j], sy[j], sz[j], ssx[j], ssy[j], ssz[j], sr[j],
-                                tx[i], ty[i], tz[i], &tax[i], &tay[i], &taz[i]);
+                                tx[i], ty[i], tz[i], tr[i], &tax[i], &tay[i], &taz[i]);
         }
     }
 }
@@ -57,12 +57,13 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy
                                       const Vc::float_v ssx, const Vc::float_v ssy, const Vc::float_v ssz,
                                       const Vc::float_v sr,
                                       const Vc::float_v tx, const Vc::float_v ty, const Vc::float_v tz,
+                                      const Vc::float_v tr,
                                       Vc::float_v* tax, Vc::float_v* tay, Vc::float_v* taz) {
-    // 28*w flops
+    // 30*w flops
     const Vc::float_v dx = sx - tx;
     const Vc::float_v dy = sy - ty;
     const Vc::float_v dz = sz - tz;
-    Vc::float_v r2 = dx*dx + dy*dy + dz*dz + sr*sr;
+    Vc::float_v r2 = dx*dx + dy*dy + dz*dz + sr*sr + tr*tr;
     //r2 = 1.0 / (r2*sqrt(r2));
     r2 = Vc::reciprocal(r2*Vc::sqrt(r2));
     (*tax) += r2 * (dz*ssy - dy*ssz);
@@ -73,7 +74,7 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy
 void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy[], const Vc::float_v sz[],
                                     const Vc::float_v ssx[],const Vc::float_v ssy[],const Vc::float_v ssz[],
                                     const Vc::float_v sr[],
-                 const int numTarg, const float tx[], const float ty[], const float tz[],
+                 const int numTarg, const float tx[], const float ty[], const float tz[], const float tr[],
                                     float tax[], float tay[], float taz[]) {
 
     // scalar over targets
@@ -83,14 +84,14 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
         const Vc::float_v vtz = tz[i];
-        //Vc::float_v vtax(0.0f);
-        Vc::float_v vtax = 0.0f;
+        const Vc::float_v vtr = tr[i];
+        Vc::float_v vtax(0.0f);
         Vc::float_v vtay(0.0f);
         Vc::float_v vtaz(0.0f);
         // vectorized over sources
         for (int j = 0; j < numSrcs/Vc::float_v::Size; j++) {
             nbody_kernel_Vc_01(sx[j], sy[j], sz[j], ssx[j], ssy[j], ssz[j], sr[j],
-                               vtx, vty, vtz, &vtax, &vtay, &vtaz);
+                               vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
         }
         // reduce to scalar
         tax[i] = vtax.sum();
@@ -151,6 +152,7 @@ int main(int argc, char *argv[]) {
     float *tx = new float[numTargs];
     float *ty = new float[numTargs];
     float *tz = new float[numTargs];
+    float *tr = new float[numTargs];
     float *tax = new float[numTargs];
     float *tay = new float[numTargs];
     float *taz = new float[numTargs];
@@ -158,6 +160,7 @@ int main(int argc, char *argv[]) {
         tx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
         ty[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
         tz[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
+        tr[i] = 1.0 / sqrt((float)numTargs);
         tax[i] = 0.0;
         tay[i] = 0.0;
         taz[i] = 0.0;
@@ -192,7 +195,7 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < test_iterations[0]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_01(numSrcs, vsx, vsy, vsz, vssx, vssy, vssz, vsr,
-                    numTargs, tx, ty, tz, tax, tay, taz);
+                    numTargs, tx, ty, tz, tr, tax, tay, taz);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
@@ -214,7 +217,7 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < test_iterations[1]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_serial(numSrcs, sx, sy, sz, ssx, ssy, ssz, sr,
-                     numTargs, tx, ty, tz, tax, tay, taz);
+                     numTargs, tx, ty, tz, tr, tax, tay, taz);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         printf("@time of serial run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());

@@ -40,6 +40,25 @@ N	01		10		11		x86
 100000	37.084541	41.329470	19.818247	41.231342
 learned: method 10 benefits more from -O3 than others
 
+2018-11-12 - using radii for sources only
+g++ -O3 -mavx2 -mfma -I/opt/Vc/include -o nvortex3d nvortex3d.cpp -L/opt/Vc/lib -lVc
+N	01		x86
+1000	67.326873	5.159938
+3000	67.689185	5.059004
+10000	62.445508	5.120437
+30000	62.216923	5.163415
+100000	47.048069	2.632465
+errors seem to max out at ~1e-4
+
+2018-11-12 - using radii for both sources and targets
+g++ -O3 -mavx2 -mfma -I/opt/Vc/include -o nvortex3d nvortex3d.cpp -L/opt/Vc/lib -lVc
+N	01		x86
+1000	19.047690	2.618655
+3000	45.519864	5.043156
+10000	63.633369	5.141889
+30000	62.130096	5.063553
+100000	47.122497	2.598241
+
 other stuff:
 -funroll-loops has no effect
 -ffast-math SLOWS all three Vc methods down
