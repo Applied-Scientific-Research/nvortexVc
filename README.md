@@ -24,7 +24,7 @@ Run the code with one argument: the number of particles to use.
     nvort3domp -n=10000
 
 ### Performance
-I've found that performance of this algorithm accelerated with Vc is very close to that from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. One drawback is that Vc will not automatically pad arrays with proper values, so you need to take care to always use multiples of 4 or 8 particles (or 16 whenever Vc supports AVX-512).
+I've found that performance of this algorithm accelerated with Vc is very close to that from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. A little care must be taken to pad arrays with proper values (buffer particle radius must be nonzero), lest the inner kernel try to divide by zero when using the last vector register set of particles.
 
 On a 16-core Intel i9-7960X Skylake CPU, the nvortex3domp code exceeded 1 TFlop/s - the first time I've ever seen that happen on a single CPU.
 
