@@ -1,6 +1,15 @@
 /*
-  Copyright (c) 2015,7, Mark J Stock
-*/
+ * nvortexVc - test platform for SIMD-acceleration of an N-vortex solver using Vc
+ *
+ * Copyright (c) 2017-8 Mark J Stock
+ *
+ * For best performance, build on Linux with:
+ *   g++ -O3 -mavx2 -mfma -I/opt/Vc/include -o nvortex3d nvortex3d.cpp -L/opt/Vc/lib -lVc
+ *   g++ -O3 -mavx2 -mfma -I/opt/Vc/include -fopenmp -o nvortex3domp nvortex3d.cpp -L/opt/Vc/lib -lVc
+ *
+ * And then run with:
+ *   ./nvortex3d -n=10000 8 2
+ */
 
 #include <Vc/Vc>
 
@@ -211,6 +220,31 @@ void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
 }
 
 
+// convert a C-style float array into a C-style float_v array
+inline Vc::float_v* floatarry_to_floatvarry (const float* const in, const int n, const float defaultval) {
+    size_t nvec = (n + Vc::float_v::Size - 1) / Vc::float_v::Size;
+    Vc::float_v* out = new Vc::float_v[nvec];
+
+    for (size_t i = 0; i < nvec-1; ++i) {
+        size_t idx = i * Vc::float_v::Size;
+        for (size_t j = 0; j < Vc::float_v::Size; ++j) {
+            out[i][j] = in[j+idx];
+        }
+    }
+
+    // last vector may need some default values
+    size_t lastj = n - (nvec-1)*Vc::float_v::Size;
+    for (size_t j = 0; j < lastj; ++j) {
+        size_t idx = (nvec-1) * Vc::float_v::Size;
+        out[nvec-1][j] = in[j+idx];
+    }
+    for (size_t j = lastj; j < Vc::float_v::Size; ++j) {
+        out[nvec-1][j] = defaultval;
+    }
+
+    return out;
+}
+
 // main program
 
 static void usage() {
@@ -221,16 +255,15 @@ static void usage() {
 int main(int argc, char *argv[]) {
 
     static unsigned int test_iterations[] = {4, 2};
-    const int maxGangSize = 16;
-    int numSrcs = maxGangSize*(10000/maxGangSize);
-    int numTargs = maxGangSize*(10000/maxGangSize);
+    int numSrcs = 10000;
+    int numTargs = 10000;
 
     if (argc > 1) {
         if (strncmp(argv[1], "-n=", 3) == 0) {
             int num = atof(argv[1] + 3);
             if (num < 1) usage();
-            numSrcs = maxGangSize*(num/maxGangSize);
-            numTargs = maxGangSize*(num/maxGangSize);
+            numSrcs = num;
+            numTargs = num;
         }
     }
     if ((argc == 3) || (argc == 4)) {
@@ -239,8 +272,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
-    // allocate particle data
+    // allocate original particle data (used for x86 reference calculation)
 
     float *sx = new float[numSrcs];
     float *sy = new float[numSrcs];
@@ -276,57 +308,30 @@ int main(int argc, char *argv[]) {
         taz[i] = 0.0;
     }
 
+    // allocate vectorized particle data
+
     // vectorize over arrays of float_v types
-    Vc::float_v *vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vsz = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vssx = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vssy = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vssz = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vsr = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    for (size_t i = 0; i < numSrcs/Vc::float_v::Size; ++i) {
-        size_t idx = Vc::float_v::Size*i;
-        for (size_t j = 0; j < Vc::float_v::Size; ++j) {
-            vsx[i][j] = sx[idx];
-            vsy[i][j] = sy[idx];
-            vsz[i][j] = sz[idx];
-            vssx[i][j] = ssx[idx];
-            vssy[i][j] = ssy[idx];
-            vssz[i][j] = ssz[idx];
-            vsr[i][j] = sr[idx];
-            ++idx;
-        }
-    }
-    printf("vsx is %d * %d\n",numSrcs/Vc::float_v::Size,sizeof(Vc::float_v));
+    Vc::float_v* vsx = floatarry_to_floatvarry(sx, numSrcs, 0.0);
+    Vc::float_v* vsy = floatarry_to_floatvarry(sy, numSrcs, 0.0);
+    Vc::float_v* vsz = floatarry_to_floatvarry(sz, numSrcs, 0.0);
+    Vc::float_v* vssx = floatarry_to_floatvarry(ssx, numSrcs, 0.0);
+    Vc::float_v* vssy = floatarry_to_floatvarry(ssy, numSrcs, 0.0);
+    Vc::float_v* vssz = floatarry_to_floatvarry(ssz, numSrcs, 0.0);
+    Vc::float_v* vsr = floatarry_to_floatvarry(sr, numSrcs, 1.0);
+    //printf("vsx is %d * %d\n",numSrcs/Vc::float_v::Size,sizeof(Vc::float_v));
 
     // vectorize over standard library vector objects
-    VectorF svsx;
-    VectorF svsy;
-    VectorF svsz;
-    VectorF svssx;
-    VectorF svssy;
-    VectorF svssz;
-    VectorF svsr;
-    svsx.resize(numSrcs);
-    svsy.resize(numSrcs);
-    svsz.resize(numSrcs);
-    svssx.resize(numSrcs);
-    svssy.resize(numSrcs);
-    svssz.resize(numSrcs);
-    svsr.resize(numSrcs);
-    for (size_t i = 0; i < numSrcs; ++i) {
-        svsx[i] = sx[i];
-        svsy[i] = sy[i];
-        svsz[i] = sz[i];
-        svssx[i] = ssx[i];
-        svssy[i] = ssy[i];
-        svssz[i] = ssz[i];
-        svsr[i] = sr[i];
-    }
-    printf("svsx is %d * %d\n",svsx.size(),sizeof(float));
-    printf("svsx is at %ld, which off alignment by %ld\n",svsx.data(),(size_t)(svsx.data())%32);
-    printf("svsy is at %ld, which off alignment by %ld\n",svsy.data(),(size_t)(svsy.data())%32);
-    printf("svsz is at %ld, which off alignment by %ld\n",svsz.data(),(size_t)(svsz.data())%32);
+    VectorF svsx(sx, sx+numSrcs);
+    VectorF svsy(sy, sy+numSrcs);
+    VectorF svsz(sz, sz+numSrcs);
+    VectorF svssx(ssx, ssx+numSrcs);
+    VectorF svssy(ssy, ssy+numSrcs);
+    VectorF svssz(ssz, ssz+numSrcs);
+    VectorF svsr(sr, sr+numSrcs);
+    //printf("svsx is %d * %d\n",svsx.size(),sizeof(float));
+    //printf("svsx is at %ld, which off alignment by %ld\n",svsx.data(),(size_t)(svsx.data())%32);
+    //printf("svsy is at %ld, which off alignment by %ld\n",svsy.data(),(size_t)(svsy.data())%32);
+    //printf("svsz is at %ld, which off alignment by %ld\n",svsz.data(),(size_t)(svsz.data())%32);
 
 
     //
@@ -393,6 +398,9 @@ int main(int argc, char *argv[]) {
     // Write sample results
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
     printf("\n");
+
+    // save results for error estimate
+    //std::vector<float> tax_vec(tax, tax+numTargs);
 
 
     //
