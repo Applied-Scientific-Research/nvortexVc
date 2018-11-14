@@ -19,6 +19,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <random>
 #include <chrono>
 
 using Vc::float_v;
@@ -275,6 +276,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // init random number generator
+    std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> zmean_dist(-1.0, 1.0);
+
     // allocate original particle data (used for x86 reference calculation)
 
     float *sx = new float[numSrcs];
@@ -285,12 +291,12 @@ int main(int argc, char *argv[]) {
     float *ssz = new float[numSrcs];
     float *sr = new float[numSrcs];
     for (int i = 0; i < numSrcs; i++) {
-        sx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        sy[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        sz[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        ssx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        ssy[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        ssz[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
+        sx[i] = zmean_dist(gen);
+        sy[i] = zmean_dist(gen);
+        sz[i] = zmean_dist(gen);
+        ssx[i] = zmean_dist(gen);
+        ssy[i] = zmean_dist(gen);
+        ssz[i] = zmean_dist(gen);
         sr[i] = 1.0 / sqrt((float)numSrcs);
     }
 
@@ -302,9 +308,9 @@ int main(int argc, char *argv[]) {
     float *tay = new float[numTargs];
     float *taz = new float[numTargs];
     for (int i = 0; i < numTargs; i++) {
-        tx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        ty[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        tz[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
+        tx[i] = zmean_dist(gen);
+        ty[i] = zmean_dist(gen);
+        tz[i] = zmean_dist(gen);
         tr[i] = 1.0 / sqrt((float)numTargs);
         tax[i] = 0.0;
         tay[i] = 0.0;
