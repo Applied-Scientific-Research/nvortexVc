@@ -49,11 +49,11 @@ void nbody_serial(const int numSrcs, const float sx[], const float sy[], const f
                                      float tax[], float tay[], float taz[]) {
 
     #pragma omp parallel for
-    for (int i = 0; i < numTarg; i++) {
+    for (size_t i = 0; i < numTarg; i++) {
         tax[i] = 0.0;
         tay[i] = 0.0;
         taz[i] = 0.0;
-        for (int j = 0; j < numSrcs; j++) {
+        for (size_t j = 0; j < numSrcs; j++) {
             nbody_kernel_serial(sx[j], sy[j], sz[j], ssx[j], ssy[j], ssz[j], sr[j],
                                 tx[i], ty[i], tz[i], tr[i], &tax[i], &tay[i], &taz[i]);
         }
@@ -91,9 +91,11 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
                                     const float tr[],
                                     float tax[], float tay[], float taz[]) {
 
+    size_t nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
+
     // scalar over targets
     #pragma omp parallel for
-    for (int i = 0; i < numTarg; i++) {
+    for (size_t i = 0; i < numTarg; i++) {
         // spread this one target over a vector
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
@@ -103,7 +105,7 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
         Vc::float_v vtay(0.0f);
         Vc::float_v vtaz(0.0f);
         // vectorized over sources
-        for (int j = 0; j < numSrcs/Vc::float_v::Size; j++) {
+        for (size_t j = 0; j < nSrcVec; j++) {
             nbody_kernel_Vc_01(sx[j], sy[j], sz[j], ssx[j], ssy[j], ssz[j], sr[j],
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
         }
@@ -130,9 +132,11 @@ void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
     Vc::simdize<VectorF::const_iterator> sszit;
     Vc::simdize<VectorF::const_iterator> srit;
 
+    size_t nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
+
     // scalar over targets
     #pragma omp parallel for private(sxit, syit, szit, ssxit, ssyit, sszit, srit)
-    for (int i = 0; i < numTarg; i++) {
+    for (size_t i = 0; i < numTarg; i++) {
         // spread this one target over a vector
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
@@ -150,8 +154,7 @@ void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
         sszit = ssz.begin();
         srit = sr.begin();
         // vectorized over sources
-        for (int j = 0; j < numSrcs/Vc::float_v::Size; j++) {
-            //if (i==0 and j<100) printf("    j %d has *sxit %ld\n",j,&(*sxit));
+        for (size_t j = 0; j < nSrcVec; j++) {
             nbody_kernel_Vc_01(*sxit, *syit, *szit, *ssxit, *ssyit, *sszit, *srit,
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
             // advance all of the source iterators
@@ -197,7 +200,7 @@ void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
 
     // scalar over targets
     #pragma omp parallel for
-    for (int i = 0; i < numTarg; i++) {
+    for (size_t i = 0; i < numTarg; i++) {
         // spread this one target over a vector
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
@@ -207,7 +210,7 @@ void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
         Vc::float_v vtay(0.0f);
         Vc::float_v vtaz(0.0f);
         // vectorized over sources
-        for (int j = 0; j < sxfv.vectorsCount(); j++) {
+        for (size_t j = 0; j < sxfv.vectorsCount(); j++) {
             nbody_kernel_Vc_01(sxfv.vector(j), syfv.vector(j), szfv.vector(j),
                                ssxfv.vector(j), ssyfv.vector(j), sszfv.vector(j), srfv.vector(j),
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
