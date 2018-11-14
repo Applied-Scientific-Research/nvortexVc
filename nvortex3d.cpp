@@ -1,7 +1,8 @@
 /*
  * nvortexVc - test platform for SIMD-acceleration of an N-vortex solver using Vc
  *
- * Copyright (c) 2017-8 Mark J Stock
+ * Copyright (c) 2017-8 Applied Scientific Research, Inc.
+ *   Written by Mark J Stock <markjstock@gmail.com>
  *
  * For best performance, build on Linux with:
  *   g++ -O3 -mavx2 -mfma -I/opt/Vc/include -o nvortex3d nvortex3d.cpp -L/opt/Vc/lib -lVc

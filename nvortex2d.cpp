@@ -1,5 +1,8 @@
 /*
-  Copyright (c) 2015,7, Mark J Stock
+ * nvortexVc - test platform for SIMD-acceleration of an N-vortex solver using Vc
+ *
+ * Copyright (c) 2017-8 Applied Scientific Research, Inc.
+ *   Written by Mark J Stock <markjstock@gmail.com>
 */
 
 #include <cstdlib>
