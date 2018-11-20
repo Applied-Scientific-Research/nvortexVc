@@ -126,13 +126,7 @@ void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
                                     const float tr[],
                                     float tax[], float tay[], float taz[]) {
 
-    Vc::simdize<VectorF::const_iterator> sxit;
-    Vc::simdize<VectorF::const_iterator> syit;
-    Vc::simdize<VectorF::const_iterator> szit;
-    Vc::simdize<VectorF::const_iterator> ssxit;
-    Vc::simdize<VectorF::const_iterator> ssyit;
-    Vc::simdize<VectorF::const_iterator> sszit;
-    Vc::simdize<VectorF::const_iterator> srit;
+    Vc::simdize<VectorF::const_iterator> sxit, syit, szit, ssxit, ssyit, sszit, srit;
 
     size_t nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
 

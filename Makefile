@@ -1,5 +1,6 @@
 CC=g++
-CPPOPTS=-O3 -mavx2 -mfma
+#CPPOPTS=-O3 -mavx2 -mfma
+CPPOPTS=-O3 -march=native
 INCLUDE=-I/opt/Vc/include
 LIBS=-L/opt/Vc/lib -lVc
 
