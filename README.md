@@ -12,7 +12,7 @@ This should be easy on a Linux host, but first you will need to build and instal
     make -j 4
     sudo make install
 
-Now, back in this directory you can make all four binaries (2D and 3D, with and without OpenMP).  If the code doesn't build, possibly because your CPU doesn't support the `-mfma` or `-mavx2` options, just edit `Makefile` and remove those.
+Now, back in this directory you can make all four binaries (2D and 3D, with and without OpenMP).
 
     make
 
@@ -24,7 +24,7 @@ Run the code with one argument: the number of particles to use.
     nvort3domp -n=10000
 
 ### Performance
-I've found that performance of this algorithm accelerated with Vc is very close to that from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. A little care must be taken to pad arrays with proper values (padded particle radius must be nonzero), lest the inner kernel try to divide by zero when using the last vector register set of particles.
+Performance of this algorithm accelerated with Vc is slightly better than from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. A little care must be taken to pad arrays with proper values (padded particle radius must be nonzero), lest the inner kernel try to divide by zero when using the last vector register set of particles.
 
 On a 16-core Intel i9-7960X Skylake CPU, with a large-enough problem, the `nvortex3domp` code exceeded 1 TFlop/s - the first time I've ever seen that happen on a single CPU.
 
