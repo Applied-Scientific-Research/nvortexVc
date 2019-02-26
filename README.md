@@ -32,6 +32,7 @@ The table below gives peak performance for the 3D case (with no grads) for combi
 
 | GFlop/s           | x86 serial | x86 OMP | Vc serial | Vc OMP | CPU peak | % of theoretical |
 |-------------------|------------|---------|-----------|--------|----------|------------------|
+| Intel i3-8109U    |     5.2    |   11.5  |   69.6    |  145   |   230.4  |        63%       |
 | Intel i7-7500U    |     5.1    |   11.0  |   62.2    |  121   |   204.8  |        59%       |
 | Intel i7-5960X    |     4.3    |   34.0  |   44.0    |  369   |   768    |        48%       |
 | Intel i9-7960X    |     4.3    |   64.5  |   58.5    |  813   |  1434    |        57%       |
