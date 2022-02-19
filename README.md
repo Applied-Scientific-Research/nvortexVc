@@ -26,7 +26,7 @@ Run the code with one argument: the number of particles to use.
 ### Performance
 Performance of this algorithm accelerated with Vc is slightly better than from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. A little care must be taken to pad arrays with proper values (padded particle radius must be nonzero), lest the inner kernel try to divide by zero when using the last vector register set of particles.
 
-On a 16-core Intel i9-7960X Skylake CPU, with a large-enough problem, the `nvortex3domp` code exceeded 1 TFlop/s - the first time I've ever seen that happen on a single CPU.
+On a 16-core Intel i9-7960X Skylake CPU, with a large-enough problem, the `nvortex3domp` code exceeded 1 TFlop/s - the first time I've ever seen that happen on a single CPU. The 16-core Ryzen 9 achieved 1133 GFlop/s with `./nvortex3domp -n=100000`.
 
 The table below gives peak performance for the 3D case (with no grads) for combinations of x86 (possibly auto-vectorized) vs. Vc, and single-thread vs. OpenMP multithreaded. Each was run on a Fedora or Ubuntu machine and compiled with GCC 7.2 or 7.3. The numbers are all GFlop/s and the problem size was 30000.
 
@@ -37,4 +37,5 @@ The table below gives peak performance for the 3D case (with no grads) for combi
 | Intel i7-5960X    |     4.3    |   34.0  |   44.0    |  369   |   768    |        48%       |
 | Intel i9-7960X    |     4.3    |   64.5  |   58.5    |  813   |  1434    |        57%       |
 | AMD Ryzen 7 2700X |     4.5    |   47.3  |   42.9    |  289   |   499.2  |        58%       |
+| AMD Ryzen 9 3950X |     6.2    |   61.4  |   85.0    |  772   |  2048    |        38%       |
 
