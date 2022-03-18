@@ -28,7 +28,7 @@ Performance of this algorithm accelerated with Vc is slightly better than from m
 
 On a 16-core Intel i9-7960X Skylake CPU, with a large-enough problem, the `nvortex3domp` code exceeded 1 TFlop/s - the first time I've ever seen that happen on a single CPU. The 16-core Ryzen 9 achieved 1133 GFlop/s with `./nvortex3domp -n=100000`.
 
-The table below gives peak performance for the 3D case (with no grads) for combinations of x86 (possibly auto-vectorized) vs. Vc, and single-thread vs. OpenMP multithreaded. Each was run on a Fedora or Ubuntu machine and compiled with GCC 7.2 or 7.3. The numbers are all GFlop/s and the problem size was 30000.
+The table below gives peak performance for the 3D case (with no grads) for combinations of x86 (possibly auto-vectorized) vs. Vc, and single-thread vs. OpenMP multithreaded. Each was run on a Fedora or Ubuntu machine and compiled with GCC 7.2 or 7.3. The numbers are all GFlop/s and the problem size was 30000. Note that the 5800X can perform 8 FMAs (full 256-bit AVX2 buffers) on each of its two capable FPUs, per core, per clock - incredible!
 
 | GFlop/s           | x86 serial | x86 OMP | Vc serial | Vc OMP | CPU peak | % of theoretical |
 |-------------------|------------|---------|-----------|--------|----------|------------------|
@@ -38,4 +38,4 @@ The table below gives peak performance for the 3D case (with no grads) for combi
 | Intel i9-7960X    |     4.3    |   64.5  |   58.5    |  813   |  1434    |        57%       |
 | AMD Ryzen 7 2700X |     4.5    |   47.3  |   42.9    |  289   |   499.2  |        58%       |
 | AMD Ryzen 9 3950X |     6.2    |   61.4  |   85.0    |  772   |  2048    |        38%       |
-
+| AMD Ryzen 7 5800X |     8.2    |   63.0  |  105.8    |  767   |  1208    |        64%       |
