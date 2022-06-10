@@ -19,8 +19,14 @@ static float num_flops_per = 12.f;
 
 // serial (x86) instructions
 
-static inline void nbody_kernel_serial(const float sx, const float sy, const float ss, const float sr,
-                                       const float tx, const float ty, float* tax, float* tay) {
+static inline void nbody_kernel_serial(const float sx,
+                                       const float sy,
+                                       const float ss,
+                                       const float sr,
+                                       const float tx,
+                                       const float ty,
+                                       float* const tax,
+                                       float* const tay) {
     // 12 flops
     float dx = sx - tx;
     float dy = sy - ty;
@@ -30,8 +36,16 @@ static inline void nbody_kernel_serial(const float sx, const float sy, const flo
     *tay -= r2 * dx;
 }
 
-void nbody_serial(const int numSrcs, const float sx[], const float sy[], const float ss[], const float sr[],
-                  const int numTarg, const float tx[], const float ty[], float tax[], float tay[])
+void nbody_serial(const int numSrcs,
+                  const float * const sx,
+                  const float * const sy,
+                  const float * const ss,
+                  const float * const sr,
+                  const int numTarg,
+                  const float * const tx,
+                  const float * const ty,
+                  float * const tax,
+                  float * const tay)
 {
     #pragma omp parallel for
     for (int i = 0; i < numTarg; i++) {
@@ -48,8 +62,14 @@ void nbody_serial(const int numSrcs, const float sx[], const float sy[], const f
 
 // 01 - sources are vectorized
 
-static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy, const Vc::float_v ss, const Vc::float_v sr,
-                                      const Vc::float_v tx, const Vc::float_v ty, Vc::float_v* tax, Vc::float_v* tay) {
+static inline void nbody_kernel_Vc_01(const Vc::float_v sx,
+                                      const Vc::float_v sy,
+                                      const Vc::float_v ss,
+                                      const Vc::float_v sr,
+                                      const Vc::float_v tx,
+                                      const Vc::float_v ty,
+                                      Vc::float_v* const tax,
+                                      Vc::float_v* const tay) {
     // 12*w flops
     Vc::float_v dx = sx - tx;
     Vc::float_v dy = sy - ty;
@@ -59,8 +79,16 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy
     *tay -= r2 * dx;
 }
 
-void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy[], const Vc::float_v ss[], const Vc::float_v sr[],
-                 const int numTarg, const float tx[], const float ty[], float tax[], float tay[])
+void nbody_Vc_01(const int numSrcs,
+                 const Vc::float_v * const sx,
+                 const Vc::float_v * const sy,
+                 const Vc::float_v * const ss,
+                 const Vc::float_v * const sr,
+                 const int numTarg,
+                 const float * const tx,
+                 const float * const ty,
+                 float * const tax,
+                 float * const tay)
 {
     // vector versions of the targets
     Vc::float_v vtx, vty, vtax, vtay;
@@ -86,8 +114,14 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
 
 // 10 - targets are vectorized
 
-static inline void nbody_kernel_Vc_10(const Vc::float_v sx, const Vc::float_v sy, const Vc::float_v ss, const Vc::float_v sr,
-                                      const Vc::float_v tx, const Vc::float_v ty, Vc::float_v& tax, Vc::float_v& tay) {
+static inline void nbody_kernel_Vc_10(const Vc::float_v sx,
+                                      const Vc::float_v sy,
+                                      const Vc::float_v ss,
+                                      const Vc::float_v sr,
+                                      const Vc::float_v tx,
+                                      const Vc::float_v ty,
+                                      Vc::float_v& tax,
+                                      Vc::float_v& tay) {
     // 12*w flops
     const Vc::float_v dx = sx - tx;
     const Vc::float_v dy = sy - ty;
@@ -99,8 +133,16 @@ static inline void nbody_kernel_Vc_10(const Vc::float_v sx, const Vc::float_v sy
     //std::cout << "        kernel " << tax << " " << tay << std::endl << std::flush;
 }
 
-void nbody_Vc_10(const int numSrcs, const float sx[], const float sy[], const float ss[], const float sr[],
-                 const int numTarg, const Vc::float_v tx[], const Vc::float_v ty[], Vc::float_v tax[], Vc::float_v tay[])
+void nbody_Vc_10(const int numSrcs,
+                 const float * const sx,
+                 const float * const sy,
+                 const float * const ss,
+                 const float * const sr,
+                 const int numTarg,
+                 const Vc::float_v * const tx,
+                 const Vc::float_v * const ty,
+                 Vc::float_v * const tax,
+                 Vc::float_v * const tay)
 {
     // vector over targets
     #pragma omp parallel for
@@ -130,8 +172,14 @@ void nbody_Vc_10(const int numSrcs, const float sx[], const float sy[], const fl
 
 // 11 - sources AND targets are vectorized
 
-static inline void nbody_kernel_Vc_11(const Vc::float_v sx, const Vc::float_v sy, const Vc::float_v ss, const Vc::float_v sr,
-                                      const Vc::float_v tx, const Vc::float_v ty, Vc::float_v& tax, Vc::float_v& tay) {
+static inline void nbody_kernel_Vc_11(const Vc::float_v sx,
+                                      const Vc::float_v sy,
+                                      const Vc::float_v ss,
+                                      const Vc::float_v sr,
+                                      const Vc::float_v tx,
+                                      const Vc::float_v ty,
+                                      Vc::float_v& tax,
+                                      Vc::float_v& tay) {
     // 12*w*w flops
     Vc::float_v dx = sx - tx;
     Vc::float_v dy = sy - ty;
@@ -149,8 +197,16 @@ static inline void nbody_kernel_Vc_11(const Vc::float_v sx, const Vc::float_v sy
     //std::cout << "        kernel " << tax << " " << tay << std::endl << std::flush;
 }
 
-void nbody_Vc_11(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy[], const Vc::float_v ss[], const Vc::float_v sr[],
-                 const int numTarg, const Vc::float_v tx[], const Vc::float_v ty[], Vc::float_v tax[], Vc::float_v tay[])
+void nbody_Vc_11(const int numSrcs,
+                 const Vc::float_v * const sx,
+                 const Vc::float_v * const sy,
+                 const Vc::float_v * const ss,
+                 const Vc::float_v * const sr,
+                 const int numTarg,
+                 const Vc::float_v * const tx,
+                 const Vc::float_v * const ty,
+                 Vc::float_v * const tax,
+                 Vc::float_v * const tay)
 {
     // vector over targets
     #pragma omp parallel for
@@ -183,7 +239,7 @@ static void usage() {
 
 int main(int argc, char *argv[]) {
 
-    static unsigned int test_iterations[] = {4, 2};
+    static unsigned int test_iterations[] = {4, 4, 4, 2};
     const int maxGangSize = 16;
     int numSrcs = maxGangSize*(10000/maxGangSize);
     int numTargs = maxGangSize*(10000/maxGangSize);
@@ -197,7 +253,7 @@ int main(int argc, char *argv[]) {
         }
     }
     if ((argc == 3) || (argc == 4)) {
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 4; i++) {
             test_iterations[i] = atoi(argv[argc - 2 + i]);
         }
     }
@@ -205,10 +261,10 @@ int main(int argc, char *argv[]) {
 
     // allocate particle data
 
-    float *sx = new float[numSrcs];
-    float *sy = new float[numSrcs];
-    float *ss = new float[numSrcs];
-    float *sr = new float[numSrcs];
+    float * sx = new float[numSrcs];
+    float * sy = new float[numSrcs];
+    float * ss = new float[numSrcs];
+    float * sr = new float[numSrcs];
     for (int i = 0; i < numSrcs; i++) {
         sx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
         sy[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
@@ -216,10 +272,10 @@ int main(int argc, char *argv[]) {
         sr[i] = 1.0 / sqrt((float)numSrcs);
     }
 
-    float *tx = new float[numTargs];
-    float *ty = new float[numTargs];
-    float *tax = new float[numTargs];
-    float *tay = new float[numTargs];
+    float * tx = new float[numTargs];
+    float * ty = new float[numTargs];
+    float * tax = new float[numTargs];
+    float * tay = new float[numTargs];
     for (int i = 0; i < numTargs; i++) {
         tx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
         ty[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
@@ -227,10 +283,10 @@ int main(int argc, char *argv[]) {
         tay[i] = 0.0;
     }
 
-    Vc::float_v *vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vss = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v *vsr = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v * vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v * vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v * vss = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v * vsr = new Vc::float_v[numSrcs/Vc::float_v::Size];
     for (size_t i = 0; i < numSrcs/Vc::float_v::Size; ++i) {
         size_t idx = Vc::float_v::Size*i;
         for (size_t j = 0; j < Vc::float_v::Size; ++j) {
@@ -242,10 +298,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    Vc::float_v *vtx = new Vc::float_v[numTargs/Vc::float_v::Size];
-    Vc::float_v *vty = new Vc::float_v[numTargs/Vc::float_v::Size];
-    Vc::float_v *vtax = new Vc::float_v[numTargs/Vc::float_v::Size];
-    Vc::float_v *vtay = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v * vtx = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v * vty = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v * vtax = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v * vtay = new Vc::float_v[numTargs/Vc::float_v::Size];
     for (size_t i = 0; i < numTargs/Vc::float_v::Size; ++i) {
         size_t idx = Vc::float_v::Size*i;
         for (size_t j = 0; j < Vc::float_v::Size; ++j) {
@@ -272,19 +328,21 @@ int main(int argc, char *argv[]) {
         minVc = std::min(minVc, elapsed_seconds.count());
     }
 
+    if (test_iterations[0] > 0) {
     printf("[nbody Vc 01]:\t\t[%.6f] seconds\n", minVc);
     printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc));
 
     // Write sample results
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g\n",i,tax[i],tay[i]);
     printf("\n");
+    }
 
 
     //
     // Compute the result using the Vc implementation; report the minimum time
     //
     double minVc10 = 1e30;
-    for (unsigned int i = 0; i < test_iterations[0]; ++i) {
+    for (unsigned int i = 0; i < test_iterations[1]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_10(numSrcs, sx, sy, ss, sr,
                     numTargs, vtx, vty, vtax, vtay);
@@ -294,6 +352,7 @@ int main(int argc, char *argv[]) {
         minVc10 = std::min(minVc10, elapsed_seconds.count());
     }
 
+    if (test_iterations[1] > 0) {
     printf("[nbody Vc 10]:\t\t[%.6f] seconds\n", minVc10);
     printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc10));
 
@@ -311,13 +370,14 @@ int main(int argc, char *argv[]) {
 
     // accumulate minimum
     minVc = std::min(minVc, minVc10);
+    }
 
 
     //
     // Compute the result using the Vc implementation; report the minimum time
     //
     double minVc11 = 1e30;
-    for (unsigned int i = 0; i < test_iterations[0]; ++i) {
+    for (unsigned int i = 0; i < test_iterations[2]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_11(numSrcs, vsx, vsy, vss, vsr,
                     numTargs, vtx, vty, vtax, vtay);
@@ -327,6 +387,7 @@ int main(int argc, char *argv[]) {
         minVc11 = std::min(minVc11, elapsed_seconds.count());
     }
 
+    if (test_iterations[2] > 0) {
     printf("[nbody Vc 11]:\t\t[%.6f] seconds\n", minVc11);
     printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc11));
 
@@ -344,13 +405,14 @@ int main(int argc, char *argv[]) {
 
     // accumulate minimum
     minVc = std::min(minVc, minVc11);
+    }
 
 
     //
     // And run the serial implementation a few times, again reporting the minimum
     //
     double minSerial = 1e30;
-    for (unsigned int i = 0; i < test_iterations[1]; ++i) {
+    for (unsigned int i = 0; i < test_iterations[3]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_serial(numSrcs, sx, sy, ss, sr,
                      numTargs, tx, ty, tax, tay);
@@ -360,6 +422,7 @@ int main(int argc, char *argv[]) {
         minSerial = std::min(minSerial, elapsed_seconds.count());
     }
 
+    if (test_iterations[3] > 0) {
     printf("[nbody serial]:\t\t[%.6f] seconds\n", minSerial);
     printf("               \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minSerial));
 
@@ -368,6 +431,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
+    }
 
     return 0;
 }
