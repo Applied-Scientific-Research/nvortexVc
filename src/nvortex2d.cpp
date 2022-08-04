@@ -5,15 +5,20 @@
  *   Written by Mark J Stock <markjstock@gmail.com>
 */
 
+#ifdef USE_VC
+#include <Vc/Vc>
+#endif
+
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
-#include <Vc/Vc>
 
+#ifdef USE_VC
 using Vc::float_v;
+#endif
 
 static float num_flops_per = 12.f;
 
@@ -62,6 +67,7 @@ void nbody_serial(const int numSrcs,
 
 // 01 - sources are vectorized
 
+#ifdef USE_VC
 static inline void nbody_kernel_Vc_01(const Vc::float_v sx,
                                       const Vc::float_v sy,
                                       const Vc::float_v ss,
@@ -102,7 +108,7 @@ void nbody_Vc_01(const int numSrcs,
         vtax = 0.0f;
         vtay = 0.0f;
         // vectorized over sources
-        for (int j = 0; j < numSrcs/Vc::float_v::Size; j++) {
+        for (int j = 0; j < numSrcs/(int)Vc::float_v::Size; j++) {
             nbody_kernel_Vc_01(sx[j], sy[j], ss[j], sr[j],
                                vtx, vty, &vtax, &vtay);
         }
@@ -146,7 +152,7 @@ void nbody_Vc_10(const int numSrcs,
 {
     // vector over targets
     #pragma omp parallel for
-    for (int i = 0; i < numTarg/Vc::float_v::Size; i++) {
+    for (int i = 0; i < numTarg/(int)Vc::float_v::Size; i++) {
         // zero the output vectors
         tax[i] = 0.0f;
         tay[i] = 0.0f;
@@ -186,7 +192,8 @@ static inline void nbody_kernel_Vc_11(const Vc::float_v sx,
     Vc::float_v r2 = ss / (dx*dx + dy*dy + sr*sr);
     tax += r2 * dy;
     tay -= r2 * dx;
-    for (int i = 1; i < Vc::float_v::Size; i++) {
+    // WHY IS THIS 1?
+    for (int i = 1; i < (int)Vc::float_v::Size; i++) {
     // shift the sources and do it again
         dx = sx.rotated(i) - tx;
         dy = sy.rotated(i) - ty;
@@ -210,14 +217,14 @@ void nbody_Vc_11(const int numSrcs,
 {
     // vector over targets
     #pragma omp parallel for
-    for (int i = 0; i < numTarg/Vc::float_v::Size; i++) {
+    for (int i = 0; i < numTarg/(int)Vc::float_v::Size; i++) {
         // zero the output vectors
         tax[i] = 0.0f;
         tay[i] = 0.0f;
         //std::cout << "    targs " << i << " are at " << vtx << " " << vty << std::endl << std::flush;
 
         // vector over sources
-        for (int j = 0; j < numSrcs/Vc::float_v::Size; j++) {
+        for (int j = 0; j < numSrcs/(int)Vc::float_v::Size; j++) {
 
             nbody_kernel_Vc_11(sx[j], sy[j], ss[j], sr[j],
                                tx[i], ty[i], tax[i], tay[i]);
@@ -228,6 +235,7 @@ void nbody_Vc_11(const int numSrcs,
         //std::cout << "      final " << tax[i] << " " << tay[i] << std::endl << std::flush;
     }
 }
+#endif
 
 
 // main program
@@ -283,6 +291,7 @@ int main(int argc, char *argv[]) {
         tay[i] = 0.0;
     }
 
+#ifdef USE_VC
     Vc::float_v * vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
     Vc::float_v * vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
     Vc::float_v * vss = new Vc::float_v[numSrcs/Vc::float_v::Size];
@@ -406,6 +415,7 @@ int main(int argc, char *argv[]) {
     // accumulate minimum
     minVc = std::min(minVc, minVc11);
     }
+#endif
 
 
     //
@@ -430,7 +440,9 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g\n",i,tax[i],tay[i]);
     printf("\n");
 
+#ifdef USE_VC
     printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
+#endif
     }
 
     return 0;

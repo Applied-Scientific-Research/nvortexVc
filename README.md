@@ -2,7 +2,7 @@
 Direct Biot-Savart solver for 2D and 3D vortex blobs accelerated with Vc
 
 ### Build and run
-This should be easy on a Linux host, but first you will need to build and install [Vc](https://github.com/VcDevel/Vc).
+This should be easy on a Linux host, but first you may want to build and install [Vc](https://github.com/VcDevel/Vc).
 
     git clone https://github.com/VcDevel/Vc.git
     cd Vc
@@ -12,16 +12,23 @@ This should be easy on a Linux host, but first you will need to build and instal
     make -j 4
     sudo make install
 
-Now, back in this directory you can make all four binaries (2D and 3D, with and without OpenMP).
+Now, back in this directory you can build the binaries with
 
+    mkdir build
+    cd build
+    cmake ..
     make
+
+Replace the above `cmake` command with one of the following to allow build with Vc and/or OpenMP:
+
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    cmake -DCMAKE_BUILD_TYPE=Release -DUSE_VC=TRUE -DVc_DIR=/opt/Vc/lib/cmake/Vc ..
+    cmake -DCMAKE_BUILD_TYPE=Release -DUSE_OMP=TRUE ..
 
 Run the code with one argument: the number of particles to use.
 
     nvortex2d -n=10000
-    nvortex2domp -n=10000
     nvortex3d -n=10000
-    nvortex3domp -n=10000
 
 ### Performance
 Performance of this algorithm accelerated with Vc is slightly better than from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. A little care must be taken to pad arrays with proper values (padded particle radius must be nonzero), lest the inner kernel try to divide by zero when using the last vector register set of particles.

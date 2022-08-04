@@ -12,7 +12,9 @@
  *   ./nvortex3d -n=10000 8 2
  */
 
+#ifdef USE_VC
 #include <Vc/Vc>
+#endif
 
 #include <cstdlib>
 #include <cstdio>
@@ -23,8 +25,10 @@
 #include <random>
 #include <chrono>
 
+#ifdef USE_VC
 using Vc::float_v;
 using VectorF = std::vector<float, Vc::Allocator<float>>;
+#endif
 
 static float num_flops_per = 30.f;
 
@@ -51,11 +55,11 @@ void nbody_serial(const int numSrcs, const float sx[], const float sy[], const f
                                      float tax[], float tay[], float taz[]) {
 
     #pragma omp parallel for
-    for (size_t i = 0; i < numTarg; i++) {
+    for (int i = 0; i < numTarg; i++) {
         tax[i] = 0.0;
         tay[i] = 0.0;
         taz[i] = 0.0;
-        for (size_t j = 0; j < numSrcs; j++) {
+        for (int j = 0; j < numSrcs; j++) {
             nbody_kernel_serial(sx[j], sy[j], sz[j], ssx[j], ssy[j], ssz[j], sr[j],
                                 tx[i], ty[i], tz[i], tr[i], &tax[i], &tay[i], &taz[i]);
         }
@@ -67,6 +71,7 @@ void nbody_serial(const int numSrcs, const float sx[], const float sy[], const f
 
 // 01 - sources are vectorized
 
+#ifdef USE_VC
 static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy, const Vc::float_v sz,
                                       const Vc::float_v ssx, const Vc::float_v ssy, const Vc::float_v ssz,
                                       const Vc::float_v sr,
@@ -93,11 +98,11 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
                                     const float tr[],
                                     float tax[], float tay[], float taz[]) {
 
-    size_t nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
+    const int nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
 
     // scalar over targets
     #pragma omp parallel for
-    for (size_t i = 0; i < numTarg; i++) {
+    for (int i = 0; i < numTarg; i++) {
         // spread this one target over a vector
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
@@ -107,7 +112,7 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
         Vc::float_v vtay(0.0f);
         Vc::float_v vtaz(0.0f);
         // vectorized over sources
-        for (size_t j = 0; j < nSrcVec; j++) {
+        for (int j = 0; j < nSrcVec; j++) {
             nbody_kernel_Vc_01(sx[j], sy[j], sz[j], ssx[j], ssy[j], ssz[j], sr[j],
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
         }
@@ -128,11 +133,11 @@ void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
 
     Vc::simdize<VectorF::const_iterator> sxit, syit, szit, ssxit, ssyit, sszit, srit;
 
-    size_t nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
+    const int nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
 
     // scalar over targets
     #pragma omp parallel for private(sxit, syit, szit, ssxit, ssyit, sszit, srit)
-    for (size_t i = 0; i < numTarg; i++) {
+    for (int i = 0; i < numTarg; i++) {
         // spread this one target over a vector
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
@@ -150,7 +155,7 @@ void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
         sszit = ssz.begin();
         srit = sr.begin();
         // vectorized over sources
-        for (size_t j = 0; j < nSrcVec; j++) {
+        for (int j = 0; j < nSrcVec; j++) {
             nbody_kernel_Vc_01(*sxit, *syit, *szit, *ssxit, *ssyit, *sszit, *srit,
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
             // advance all of the source iterators
@@ -196,7 +201,7 @@ void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
 
     // scalar over targets
     #pragma omp parallel for
-    for (size_t i = 0; i < numTarg; i++) {
+    for (int i = 0; i < numTarg; i++) {
         // spread this one target over a vector
         const Vc::float_v vtx = tx[i];
         const Vc::float_v vty = ty[i];
@@ -243,6 +248,8 @@ inline Vc::float_v* floatarry_to_floatvarry (const float* const in, const int n,
 
     return out;
 }
+#endif
+
 
 // main program
 
@@ -314,6 +321,7 @@ int main(int argc, char *argv[]) {
 
     // allocate vectorized particle data
 
+#ifdef USE_VC
     // vectorize over arrays of float_v types
     Vc::float_v* vsx = floatarry_to_floatvarry(sx, numSrcs, 0.0);
     Vc::float_v* vsy = floatarry_to_floatvarry(sy, numSrcs, 0.0);
@@ -405,6 +413,7 @@ int main(int argc, char *argv[]) {
 
     // save results for error estimate
     std::vector<float> tax_vec(tax, tax+numTargs);
+#endif
 
 
     //
@@ -428,6 +437,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
     printf("\n");
 
+#ifdef USE_VC
     // calculate error estimate
     std::vector<float> tax_x86(tax, tax+numTargs);
     float numer = 0.0;
@@ -440,6 +450,7 @@ int main(int argc, char *argv[]) {
     // final echo
     printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
     printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+#endif
 
     return 0;
 }
