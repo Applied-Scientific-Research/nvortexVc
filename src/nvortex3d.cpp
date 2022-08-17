@@ -34,10 +34,10 @@ static float num_flops_per = 30.f;
 
 // serial (x86) instructions
 
-static inline void nbody_kernel_serial(float const sx, const float sy, const float sz,
+static inline void nbody_kernel_serial(const float sx, const float sy, const float sz,
                                        const float ssx,const float ssy,const float ssz, const float sr,
                                        const float tx, const float ty, const float tz, const float tr,
-                                       float* tax, float* tay, float* taz) {
+                                       float* const __restrict__ tax, float* const __restrict__ tay, float* const __restrict__ taz) {
     // 30 flops
     const float dx = sx - tx;
     const float dy = sy - ty;
@@ -49,10 +49,12 @@ static inline void nbody_kernel_serial(float const sx, const float sy, const flo
     (*taz) += r2 * (dy*ssx - dx*ssy);
 }
 
-void nbody_serial(const int numSrcs, const float sx[], const float sy[], const float sz[],
-                                     const float ssx[],const float ssy[],const float ssz[], const float sr[],
-                  const int numTarg, const float tx[], const float ty[], const float tz[], const float tr[],
-                                     float tax[], float tay[], float taz[]) {
+void nbody_serial(const int numSrcs, const float* const __restrict__ sx, const float* const __restrict__ sy, const float* const __restrict__ sz,
+                                     const float* const __restrict__ ssx,const float* const __restrict__ ssy,const float* const __restrict__ ssz,
+                                     const float* const __restrict__ sr,
+                  const int numTarg, const float* const __restrict__ tx, const float* const __restrict__ ty, const float* const __restrict__ tz,
+                                     const float* const __restrict__ tr,
+                                     float* const __restrict__ tax, float* const __restrict__ tay, float* const __restrict__ taz) {
 
     #pragma omp parallel for
     for (int i = 0; i < numTarg; i++) {
@@ -77,7 +79,7 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy
                                       const Vc::float_v sr,
                                       const Vc::float_v tx, const Vc::float_v ty, const Vc::float_v tz,
                                       const Vc::float_v tr,
-                                      Vc::float_v* tax, Vc::float_v* tay, Vc::float_v* taz) {
+                                      Vc::float_v* const __restrict__ tax, Vc::float_v* const __restrict__ tay, Vc::float_v* const __restrict__ taz) {
     // 30*w flops
     const Vc::float_v dx = sx - tx;
     const Vc::float_v dy = sy - ty;
