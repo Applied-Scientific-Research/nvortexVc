@@ -24,11 +24,11 @@ IF( CMAKE_COMPILER_IS_GNUCXX )
     # Debug already includes -O0 -g
     ADD_COMPILE_OPTIONS( -ggdb3 )
   ELSEIF( CMAKE_BUILD_TYPE STREQUAL "Release" )
-    # Debug already includes -O3
-    ADD_COMPILE_OPTIONS( -march=native -ffast-math )
+    # Release already includes -O3
+    ADD_COMPILE_OPTIONS( -march=native -ffast-math -Ofast -flto )
   ELSEIF( CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" )
-    # Debug already includes -O2 -g
-    ADD_COMPILE_OPTIONS( -march=native -ggdb3 )
+    # RelDbg already includes -O2 -g
+    ADD_COMPILE_OPTIONS( -march=native -Ofast -ggdb3 )
   ENDIF()
 
 ELSEIF( CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
@@ -40,7 +40,7 @@ ELSEIF( CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
   IF (INTERNAL_HAVE_CRAY_COMPILER) #not actually Clang
     # cray compiler misidentifies as Clang and needs this instead
-    # nothing now
+    ADD_COMPILE_OPTIONS( -fsave-loopmark -floopmark-style=interspersed )
   ELSE()
     # real clang needs this
     ADD_COMPILE_OPTIONS( -stdlib=libc++ )
@@ -49,11 +49,11 @@ ELSEIF( CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
     # Debug already includes -O0 -g
     ADD_COMPILE_OPTIONS( -ggdb )
   ELSEIF( CMAKE_BUILD_TYPE STREQUAL "Release" )
-    # Debug already includes -O3
-    ADD_COMPILE_OPTIONS( -march=native -ffast-math )
+    # Release already includes -O3
+    ADD_COMPILE_OPTIONS( -march=native -Ofast -flto )
   ELSEIF( CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" )
-    # Debug already includes -O2 -g
-    ADD_COMPILE_OPTIONS( -march=native -ggdb )
+    # RelDbg already includes -O2 -g
+    ADD_COMPILE_OPTIONS( -march=native -Ofast -ggdb )
   ENDIF()
 
 ELSEIF( MSVC )
