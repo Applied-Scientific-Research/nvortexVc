@@ -415,6 +415,9 @@ int main(int argc, char *argv[]) {
     // accumulate minimum
     minVc = std::min(minVc, minVc11);
     }
+
+    // save results for error estimate
+    std::vector<float> tax_vec(tax, tax+numTargs);
 #endif
 
 
@@ -441,7 +444,17 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
 #ifdef USE_VC
+    // calculate error estimate
+    std::vector<float> tax_x86(tax, tax+numTargs);
+    float numer = 0.0;
+    float denom = 0.0;
+    for (size_t i=0; i<tax_vec.size(); ++i) {
+        numer += std::pow(tax_vec[i]-tax_x86[i], 2);
+        denom += std::pow(tax_x86[i], 2);
+    }
+
     printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
+    printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
 #endif
     }
 
