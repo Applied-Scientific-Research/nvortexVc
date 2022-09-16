@@ -44,9 +44,9 @@ static inline void nbody_kernel_serial(const float sx, const float sy, const flo
     const float dz = sz - tz;
     float r2 = dx*dx + dy*dy + dz*dz + sr*sr + tr*tr;
     r2 = 1.0/(r2*sqrt(r2));
-    (*tax) += r2 * (dz*ssy - dy*ssz);
-    (*tay) += r2 * (dx*ssz - dz*ssx);
-    (*taz) += r2 * (dy*ssx - dx*ssy);
+    *tax += r2 * (dz*ssy - dy*ssz);
+    *tay += r2 * (dx*ssz - dz*ssx);
+    *taz += r2 * (dy*ssx - dx*ssy);
 }
 
 void nbody_serial(const int numSrcs, const float* const __restrict__ sx, const float* const __restrict__ sy, const float* const __restrict__ sz,
@@ -87,18 +87,18 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy
     Vc::float_v r2 = dx*dx + dy*dy + dz*dz + sr*sr + tr*tr;
     //r2 = 1.0 / (r2*sqrt(r2));
     r2 = Vc::reciprocal(r2*Vc::sqrt(r2));
-    (*tax) += r2 * (dz*ssy - dy*ssz);
-    (*tay) += r2 * (dx*ssz - dz*ssx);
-    (*taz) += r2 * (dy*ssx - dx*ssy);
+    *tax += r2 * (dz*ssy - dy*ssz);
+    *tay += r2 * (dx*ssz - dz*ssx);
+    *taz += r2 * (dy*ssx - dx*ssy);
 }
 
 // compute directly from the array of Vc::float_v objects
-void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy[], const Vc::float_v sz[],
-                                    const Vc::float_v ssx[],const Vc::float_v ssy[],const Vc::float_v ssz[],
-                                    const Vc::float_v sr[],
-                 const int numTarg, const float tx[], const float ty[], const float tz[],
-                                    const float tr[],
-                                    float tax[], float tay[], float taz[]) {
+void nbody_Vc_01(const int numSrcs, const Vc::float_v* const sx, const Vc::float_v* const sy, const Vc::float_v* const sz,
+                                    const Vc::float_v* const ssx,const Vc::float_v* const ssy,const Vc::float_v* const ssz,
+                                    const Vc::float_v* sr,
+                 const int numTarg, const float* const tx, const float* const ty, const float* const tz,
+                                    const float* const tr,
+                                    float* const tax, float* const tay, float* const taz) {
 
     const int nSrcVec = (numSrcs + Vc::float_v::Size - 1) / Vc::float_v::Size;
 
@@ -129,9 +129,9 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v sx[], const Vc::float_v sy
 void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const VectorF& sz,
                                     const VectorF& ssx,const VectorF& ssy,const VectorF& ssz,
                                     const VectorF& sr,
-                 const int numTarg, const float tx[], const float ty[], const float tz[],
-                                    const float tr[],
-                                    float tax[], float tay[], float taz[]) {
+                 const int numTarg, const float* const tx, const float* const ty, const float* const tz,
+                                    const float* const tr,
+                                    float* const tax, float* const tay, float* const taz) {
 
     Vc::simdize<VectorF::const_iterator> sxit, syit, szit, ssxit, ssyit, sszit, srit;
 
@@ -188,9 +188,9 @@ inline const Vc::Memory<Vc::float_v> stdvec_to_floatvvec (const VectorF& in, con
 void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const VectorF& sz,
                                     const VectorF& ssx,const VectorF& ssy,const VectorF& ssz,
                                     const VectorF& sr,
-                 const int numTarg, const float tx[], const float ty[], const float tz[],
-                                    const float tr[],
-                                    float tax[], float tay[], float taz[]) {
+                 const int numTarg, const float* const tx, const float* const ty, const float* const tz,
+                                    const float* const tr,
+                                    float* const tax, float* const tay, float* const taz) {
 
     // temporary arrays of float_v objects
     const Vc::Memory<Vc::float_v> sxfv = stdvec_to_floatvvec(sx, 0.0);
@@ -336,7 +336,6 @@ int main(int argc, char *argv[]) {
     Vc::float_v* vssy = floatarry_to_floatvarry(ssy, numSrcs, 0.0);
     Vc::float_v* vssz = floatarry_to_floatvarry(ssz, numSrcs, 0.0);
     Vc::float_v* vsr = floatarry_to_floatvarry(sr, numSrcs, 1.0);
-    //printf("vsx is %d * %d\n",numSrcs/Vc::float_v::Size,sizeof(Vc::float_v));
 
     // vectorize over standard library vector objects
     VectorF svsx(sx, sx+numSrcs);

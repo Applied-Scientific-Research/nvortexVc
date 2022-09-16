@@ -20,23 +20,20 @@
 
 #ifdef USE_VC
 using Vc::float_v;
+using VectorF = std::vector<float, Vc::Allocator<float>>;
 #endif
 
 static float num_flops_per = 12.f;
 
 // serial (x86) instructions
 
-static inline void nbody_kernel_serial(const float sx,
-                                       const float sy,
-                                       const float ss,
-                                       const float sr,
-                                       const float tx,
-                                       const float ty,
-                                       float* const tax,
-                                       float* const tay) {
+static inline void nbody_kernel_serial(const float sx, const float sy,
+                                       const float ss, const float sr,
+                                       const float tx, const float ty,
+                                       float* const tax, float* const tay) {
     // 12 flops
-    float dx = sx - tx;
-    float dy = sy - ty;
+    const float dx = sx - tx;
+    const float dy = sy - ty;
     float r2 = dx*dx + dy*dy + sr*sr;
     r2 = ss/r2;
     *tax += r2 * dy;
@@ -65,17 +62,16 @@ void nbody_serial(const int numSrcs,
     }
 }
 
+
 // vectorized (Vc) instructions
 
 // 01 - sources are vectorized
 
 #ifdef USE_VC
-static inline void nbody_kernel_Vc_01(const Vc::float_v sx,
-                                      const Vc::float_v sy,
+static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy,
                                       const Vc::float_v ss,
                                       const Vc::float_v sr,
-                                      const Vc::float_v tx,
-                                      const Vc::float_v ty,
+                                      const Vc::float_v tx, const Vc::float_v ty,
                                       Vc::float_v* const tax,
                                       Vc::float_v* const tay) {
     // 12*w flops
@@ -89,15 +85,12 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx,
 
 // compute directly from the array of Vc::float_v objects
 void nbody_Vc_01(const int numSrcs,
-                 const Vc::float_v* const sx,
-                 const Vc::float_v* const sy,
+                 const Vc::float_v* const sx, const Vc::float_v* const sy,
                  const Vc::float_v* const ss,
                  const Vc::float_v* const sr,
                  const int numTarg,
-                 const float* const tx,
-                 const float* const ty,
-                 float* const tax,
-                 float* const tay)
+                 const float* const tx, const float* const ty,
+                 float* const tax, float* const tay)
 {
 
     // scalar over targets
@@ -237,6 +230,7 @@ void nbody_Vc_03(const int numSrcs,
     }
 }
 
+
 // convert a C-style float array into a C-style float_v array
 inline Vc::float_v* floatarry_to_floatvarry (const float* const in, const int n, const float defaultval) {
     size_t nvec = (n + Vc::float_v::Size - 1) / Vc::float_v::Size;
@@ -330,25 +324,15 @@ int main(int argc, char *argv[]) {
 
 #ifdef USE_VC
     // vectorize over arrays of float_v types
-    Vc::float_v* vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v* vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v* vss = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v* vsr = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    for (size_t i = 0; i < numSrcs/Vc::float_v::Size; ++i) {
-        size_t idx = Vc::float_v::Size*i;
-        for (size_t j = 0; j < Vc::float_v::Size; ++j) {
-            vsx[i][j] = sx[idx];
-            vsy[i][j] = sy[idx];
-            vss[i][j] = ss[idx];
-            vsr[i][j] = sr[idx];
-            ++idx;
-        }
-    }
+    Vc::float_v* vsx = floatarry_to_floatvarry(sx, numSrcs, 0.0);
+    Vc::float_v* vsy = floatarry_to_floatvarry(sy, numSrcs, 0.0);
+    Vc::float_v* vss = floatarry_to_floatvarry(ss, numSrcs, 0.0);
+    Vc::float_v* vsr = floatarry_to_floatvarry(sr, numSrcs, 1.0);
 
-    Vc::float_v * vtx = new Vc::float_v[numTargs/Vc::float_v::Size];
-    Vc::float_v * vty = new Vc::float_v[numTargs/Vc::float_v::Size];
-    Vc::float_v * vtax = new Vc::float_v[numTargs/Vc::float_v::Size];
-    Vc::float_v * vtay = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v* vtx = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v* vty = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v* vtax = new Vc::float_v[numTargs/Vc::float_v::Size];
+    Vc::float_v* vtay = new Vc::float_v[numTargs/Vc::float_v::Size];
     for (size_t i = 0; i < numTargs/Vc::float_v::Size; ++i) {
         size_t idx = Vc::float_v::Size*i;
         for (size_t j = 0; j < Vc::float_v::Size; ++j) {
