@@ -305,7 +305,7 @@ int main(int argc, char *argv[]) {
         ssx[i] = zmean_dist(gen);
         ssy[i] = zmean_dist(gen);
         ssz[i] = zmean_dist(gen);
-        sr[i] = 1.0 / sqrt((float)numSrcs);
+        sr[i] = 1.0 / std::sqrt((float)numSrcs);
     }
 
     float *tx = new float[numTargs];
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
         tx[i] = zmean_dist(gen);
         ty[i] = zmean_dist(gen);
         tz[i] = zmean_dist(gen);
-        tr[i] = 1.0 / sqrt((float)numTargs);
+        tr[i] = 1.0 / std::sqrt((float)numTargs);
         tax[i] = 0.0;
         tay[i] = 0.0;
         taz[i] = 0.0;
@@ -346,10 +346,6 @@ int main(int argc, char *argv[]) {
     VectorF svssy(ssy, ssy+numSrcs);
     VectorF svssz(ssz, ssz+numSrcs);
     VectorF svsr(sr, sr+numSrcs);
-    //printf("svsx is %d * %d\n",svsx.size(),sizeof(float));
-    //printf("svsx is at %ld, which off alignment by %ld\n",svsx.data(),(size_t)(svsx.data())%32);
-    //printf("svsy is at %ld, which off alignment by %ld\n",svsy.data(),(size_t)(svsy.data())%32);
-    //printf("svsz is at %ld, which off alignment by %ld\n",svsz.data(),(size_t)(svsz.data())%32);
 
 
     //

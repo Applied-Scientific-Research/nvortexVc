@@ -13,7 +13,9 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <vector>
 #include <algorithm>
+#include <random>
 #include <chrono>
 
 #ifdef USE_VC
@@ -77,24 +79,25 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx,
                                       Vc::float_v* const tax,
                                       Vc::float_v* const tay) {
     // 12*w flops
-    Vc::float_v dx = sx - tx;
-    Vc::float_v dy = sy - ty;
+    const Vc::float_v dx = sx - tx;
+    const Vc::float_v dy = sy - ty;
     Vc::float_v r2 = dx*dx + dy*dy + sr*sr;
     r2 = ss/r2;
     *tax += r2 * dy;
     *tay -= r2 * dx;
 }
 
+// compute directly from the array of Vc::float_v objects
 void nbody_Vc_01(const int numSrcs,
-                 const Vc::float_v * const sx,
-                 const Vc::float_v * const sy,
-                 const Vc::float_v * const ss,
-                 const Vc::float_v * const sr,
+                 const Vc::float_v* const sx,
+                 const Vc::float_v* const sy,
+                 const Vc::float_v* const ss,
+                 const Vc::float_v* const sr,
                  const int numTarg,
-                 const float * const tx,
-                 const float * const ty,
-                 float * const tax,
-                 float * const tay)
+                 const float* const tx,
+                 const float* const ty,
+                 float* const tax,
+                 float* const tay)
 {
 
     // scalar over targets
@@ -116,9 +119,9 @@ void nbody_Vc_01(const int numSrcs,
     }
 }
 
-// 10 - targets are vectorized
+// 02 - targets are vectorized
 
-static inline void nbody_kernel_Vc_10(const Vc::float_v sx,
+static inline void nbody_kernel_Vc_02(const Vc::float_v sx,
                                       const Vc::float_v sy,
                                       const Vc::float_v ss,
                                       const Vc::float_v sr,
@@ -137,7 +140,7 @@ static inline void nbody_kernel_Vc_10(const Vc::float_v sx,
     //std::cout << "        kernel " << tax << " " << tay << std::endl << std::flush;
 }
 
-void nbody_Vc_10(const int numSrcs,
+void nbody_Vc_02(const int numSrcs,
                  const float * const sx,
                  const float * const sy,
                  const float * const ss,
@@ -164,7 +167,7 @@ void nbody_Vc_10(const int numSrcs,
             const Vc::float_v vss = ss[j];
             const Vc::float_v vsr = sr[j];
 
-            nbody_kernel_Vc_10(vsx, vsy, vss, vsr,
+            nbody_kernel_Vc_02(vsx, vsy, vss, vsr,
                                tx[i], ty[i], tax[i], tay[i]);
 
             //std::cout << "      src " << j << " is at " << sx[j] << " " << sy[j] << std::endl << std::flush;
@@ -174,9 +177,9 @@ void nbody_Vc_10(const int numSrcs,
     }
 }
 
-// 11 - sources AND targets are vectorized
+// 03 - sources AND targets are vectorized
 
-static inline void nbody_kernel_Vc_11(const Vc::float_v sx,
+static inline void nbody_kernel_Vc_03(const Vc::float_v sx,
                                       const Vc::float_v sy,
                                       const Vc::float_v ss,
                                       const Vc::float_v sr,
@@ -202,16 +205,16 @@ static inline void nbody_kernel_Vc_11(const Vc::float_v sx,
     //std::cout << "        kernel " << tax << " " << tay << std::endl << std::flush;
 }
 
-void nbody_Vc_11(const int numSrcs,
-                 const Vc::float_v * const sx,
-                 const Vc::float_v * const sy,
-                 const Vc::float_v * const ss,
-                 const Vc::float_v * const sr,
+void nbody_Vc_03(const int numSrcs,
+                 const Vc::float_v* const sx,
+                 const Vc::float_v* const sy,
+                 const Vc::float_v* const ss,
+                 const Vc::float_v* const sr,
                  const int numTarg,
-                 const Vc::float_v * const tx,
-                 const Vc::float_v * const ty,
-                 Vc::float_v * const tax,
-                 Vc::float_v * const tay)
+                 const Vc::float_v* const tx,
+                 const Vc::float_v* const ty,
+                 Vc::float_v* const tax,
+                 Vc::float_v* const tay)
 {
     // vector over targets
     #pragma omp parallel for
@@ -224,7 +227,7 @@ void nbody_Vc_11(const int numSrcs,
         // vector over sources
         for (int j = 0; j < numSrcs/(int)Vc::float_v::Size; j++) {
 
-            nbody_kernel_Vc_11(sx[j], sy[j], ss[j], sr[j],
+            nbody_kernel_Vc_03(sx[j], sy[j], ss[j], sr[j],
                                tx[i], ty[i], tax[i], tay[i]);
 
             //std::cout << "      src " << j << " is at " << sx[j] << " " << sy[j] << std::endl << std::flush;
@@ -232,6 +235,31 @@ void nbody_Vc_11(const int numSrcs,
         }
         //std::cout << "      final " << tax[i] << " " << tay[i] << std::endl << std::flush;
     }
+}
+
+// convert a C-style float array into a C-style float_v array
+inline Vc::float_v* floatarry_to_floatvarry (const float* const in, const int n, const float defaultval) {
+    size_t nvec = (n + Vc::float_v::Size - 1) / Vc::float_v::Size;
+    Vc::float_v* out = new Vc::float_v[nvec];
+
+    for (size_t i = 0; i < nvec-1; ++i) {
+        size_t idx = i * Vc::float_v::Size;
+        for (size_t j = 0; j < Vc::float_v::Size; ++j) {
+            out[i][j] = in[j+idx];
+        }
+    }
+
+    // last vector may need some default values
+    size_t lastj = n - (nvec-1)*Vc::float_v::Size;
+    for (size_t j = 0; j < lastj; ++j) {
+        size_t idx = (nvec-1) * Vc::float_v::Size;
+        out[nvec-1][j] = in[j+idx];
+    }
+    for (size_t j = lastj; j < Vc::float_v::Size; ++j) {
+        out[nvec-1][j] = defaultval;
+    }
+
+    return out;
 }
 #endif
 
@@ -267,27 +295,33 @@ int main(int argc, char *argv[]) {
         test_iterations[3] = atoi(argv[3]);
     }
 
+    // init random number generator
+    std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> zmean_dist(-1.0, 1.0);
 
     // allocate original particle data (used for x86 reference calculation)
 
-    float * sx = new float[numSrcs];
-    float * sy = new float[numSrcs];
-    float * ss = new float[numSrcs];
-    float * sr = new float[numSrcs];
+    float *sx = new float[numSrcs];
+    float *sy = new float[numSrcs];
+    float *ss = new float[numSrcs];
+    float *sr = new float[numSrcs];
     for (int i = 0; i < numSrcs; i++) {
-        sx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        sy[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        ss[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        sr[i] = 1.0 / sqrt((float)numSrcs);
+        sx[i] = zmean_dist(gen);
+        sy[i] = zmean_dist(gen);
+        ss[i] = zmean_dist(gen);
+        sr[i] = 1.0 / std::sqrt((float)numSrcs);
     }
 
-    float * tx = new float[numTargs];
-    float * ty = new float[numTargs];
-    float * tax = new float[numTargs];
-    float * tay = new float[numTargs];
+    float *tx = new float[numTargs];
+    float *ty = new float[numTargs];
+    float *tr = new float[numTargs];
+    float *tax = new float[numTargs];
+    float *tay = new float[numTargs];
     for (int i = 0; i < numTargs; i++) {
-        tx[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
-        ty[i] = 2.*(float)rand()/(float)RAND_MAX - 1.0;
+        tx[i] = zmean_dist(gen);
+        ty[i] = zmean_dist(gen);
+        tr[i] = 1.0 / std::sqrt((float)numTargs);
         tax[i] = 0.0;
         tay[i] = 0.0;
     }
@@ -295,10 +329,11 @@ int main(int argc, char *argv[]) {
     // allocate vectorized particle data
 
 #ifdef USE_VC
-    Vc::float_v * vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v * vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v * vss = new Vc::float_v[numSrcs/Vc::float_v::Size];
-    Vc::float_v * vsr = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    // vectorize over arrays of float_v types
+    Vc::float_v* vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v* vsy = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v* vss = new Vc::float_v[numSrcs/Vc::float_v::Size];
+    Vc::float_v* vsr = new Vc::float_v[numSrcs/Vc::float_v::Size];
     for (size_t i = 0; i < numSrcs/Vc::float_v::Size; ++i) {
         size_t idx = Vc::float_v::Size*i;
         for (size_t j = 0; j < Vc::float_v::Size; ++j) {
@@ -356,7 +391,7 @@ int main(int argc, char *argv[]) {
     double minVc02 = 1e30;
     for (unsigned int i = 0; i < test_iterations[1]; ++i) {
         auto start = std::chrono::system_clock::now();
-        nbody_Vc_10(numSrcs, sx, sy, ss, sr,
+        nbody_Vc_02(numSrcs, sx, sy, ss, sr,
                     numTargs, vtx, vty, vtax, vtay);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
@@ -391,7 +426,7 @@ int main(int argc, char *argv[]) {
     double minVc03 = 1e30;
     for (unsigned int i = 0; i < test_iterations[2]; ++i) {
         auto start = std::chrono::system_clock::now();
-        nbody_Vc_11(numSrcs, vsx, vsy, vss, vsr,
+        nbody_Vc_03(numSrcs, vsx, vsy, vss, vsr,
                     numTargs, vtx, vty, vtax, vtay);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
