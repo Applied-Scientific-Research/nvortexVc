@@ -1,7 +1,7 @@
 /*
  * nvortexVc - test platform for SIMD-acceleration of an N-vortex solver using Vc
  *
- * Copyright (c) 2017-8 Applied Scientific Research, Inc.
+ * Copyright (c) 2017-9,22 Applied Scientific Research, Inc.
  *   Written by Mark J Stock <markjstock@gmail.com>
 */
 
@@ -42,15 +42,15 @@ static inline void nbody_kernel_serial(const float sx,
 }
 
 void nbody_serial(const int numSrcs,
-                  const float * const sx,
-                  const float * const sy,
-                  const float * const ss,
-                  const float * const sr,
+                  const float* const sx,
+                  const float* const sy,
+                  const float* const ss,
+                  const float* const sr,
                   const int numTarg,
-                  const float * const tx,
-                  const float * const ty,
-                  float * const tax,
-                  float * const tay)
+                  const float* const tx,
+                  const float* const ty,
+                  float* const tax,
+                  float* const tay)
 {
     #pragma omp parallel for
     for (int i = 0; i < numTarg; i++) {
@@ -96,17 +96,15 @@ void nbody_Vc_01(const int numSrcs,
                  float * const tax,
                  float * const tay)
 {
-    // vector versions of the targets
-    Vc::float_v vtx, vty, vtax, vtay;
 
     // scalar over targets
-    #pragma omp parallel for private(vtx, vty, vtax, vtay)
+    #pragma omp parallel for
     for (int i = 0; i < numTarg; i++) {
         // spread this one target over a vector
-        vtx = tx[i];
-        vty = ty[i];
-        vtax = 0.0f;
-        vtay = 0.0f;
+        const Vc::float_v vtx = tx[i];
+        const Vc::float_v vty = ty[i];
+        Vc::float_v vtax(0.0f);
+        Vc::float_v vtay(0.0f);
         // vectorized over sources
         for (int j = 0; j < numSrcs/(int)Vc::float_v::Size; j++) {
             nbody_kernel_Vc_01(sx[j], sy[j], ss[j], sr[j],
@@ -260,14 +258,17 @@ int main(int argc, char *argv[]) {
             numTargs = maxGangSize*(num/maxGangSize);
         }
     }
-    if ((argc == 3) || (argc == 4)) {
-        for (int i = 0; i < 4; i++) {
-            test_iterations[i] = atoi(argv[argc - 2 + i]);
-        }
+    if (argc > 2) {
+        test_iterations[0] = atoi(argv[2]);
+        test_iterations[1] = test_iterations[0];
+        test_iterations[2] = test_iterations[0];
+    }
+    if (argc > 3) {
+        test_iterations[3] = atoi(argv[3]);
     }
 
 
-    // allocate particle data
+    // allocate original particle data (used for x86 reference calculation)
 
     float * sx = new float[numSrcs];
     float * sy = new float[numSrcs];
@@ -290,6 +291,8 @@ int main(int argc, char *argv[]) {
         tax[i] = 0.0;
         tay[i] = 0.0;
     }
+
+    // allocate vectorized particle data
 
 #ifdef USE_VC
     Vc::float_v * vsx = new Vc::float_v[numSrcs/Vc::float_v::Size];
@@ -348,9 +351,9 @@ int main(int argc, char *argv[]) {
 
 
     //
-    // Compute the result using the Vc implementation; report the minimum time
+    // Compute the result using Vc over std::vector objects with simdize; report the minimum time
     //
-    double minVc10 = 1e30;
+    double minVc02 = 1e30;
     for (unsigned int i = 0; i < test_iterations[1]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_10(numSrcs, sx, sy, ss, sr,
@@ -358,12 +361,12 @@ int main(int argc, char *argv[]) {
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
-        minVc10 = std::min(minVc10, elapsed_seconds.count());
+        minVc02 = std::min(minVc02, elapsed_seconds.count());
     }
 
     if (test_iterations[1] > 0) {
-    printf("[nbody Vc 10]:\t\t[%.6f] seconds\n", minVc10);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc10));
+    printf("[nbody Vc 02]:\t\t[%.6f] seconds\n", minVc02);
+    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc02));
 
     // Write sample results
     for (size_t i = 0; i < numTargs/Vc::float_v::Size; ++i) {
@@ -378,14 +381,14 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     // accumulate minimum
-    minVc = std::min(minVc, minVc10);
+    minVc = std::min(minVc, minVc02);
     }
 
 
     //
-    // Compute the result using the Vc implementation; report the minimum time
+    // Compute the result using Vc over std::vector objects with copying; report the minimum time
     //
-    double minVc11 = 1e30;
+    double minVc03 = 1e30;
     for (unsigned int i = 0; i < test_iterations[2]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_11(numSrcs, vsx, vsy, vss, vsr,
@@ -393,12 +396,12 @@ int main(int argc, char *argv[]) {
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
-        minVc11 = std::min(minVc11, elapsed_seconds.count());
+        minVc03 = std::min(minVc03, elapsed_seconds.count());
     }
 
     if (test_iterations[2] > 0) {
-    printf("[nbody Vc 11]:\t\t[%.6f] seconds\n", minVc11);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc11));
+    printf("[nbody Vc 03]:\t\t[%.6f] seconds\n", minVc03);
+    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc03));
 
     // Write sample results
     for (size_t i = 0; i < numTargs/Vc::float_v::Size; ++i) {
@@ -413,7 +416,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     // accumulate minimum
-    minVc = std::min(minVc, minVc11);
+    minVc = std::min(minVc, minVc03);
     }
 
     // save results for error estimate
@@ -453,8 +456,11 @@ int main(int argc, char *argv[]) {
         denom += std::pow(tax_x86[i], 2);
     }
 
-    printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
-    printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+    // final echo
+    if (test_iterations[0] > 0) {
+        printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
+        printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+    }
 #endif
     }
 

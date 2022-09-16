@@ -1,7 +1,7 @@
 /*
  * nvortexVc - test platform for SIMD-acceleration of an N-vortex solver using Vc
  *
- * Copyright (c) 2017-8 Applied Scientific Research, Inc.
+ * Copyright (c) 2017-9,22 Applied Scientific Research, Inc.
  *   Written by Mark J Stock <markjstock@gmail.com>
  *
  * For best performance, build on Linux with:
@@ -262,22 +262,26 @@ static void usage() {
 
 int main(int argc, char *argv[]) {
 
-    static unsigned int test_iterations[] = {4, 2};
-    int numSrcs = 10000;
-    int numTargs = 10000;
+    static unsigned int test_iterations[] = {4, 4, 4, 2};
+    const int maxGangSize = 16;
+    int numSrcs = maxGangSize*(10000/maxGangSize);
+    int numTargs = maxGangSize*(10000/maxGangSize);
 
     if (argc > 1) {
         if (strncmp(argv[1], "-n=", 3) == 0) {
             int num = atof(argv[1] + 3);
             if (num < 1) usage();
-            numSrcs = num;
-            numTargs = num;
+            numSrcs = maxGangSize*(num/maxGangSize);
+            numTargs = maxGangSize*(num/maxGangSize);
         }
     }
-    if ((argc == 3) || (argc == 4)) {
-        for (int i = 0; i < 2; i++) {
-            test_iterations[i] = atoi(argv[argc - 2 + i]);
-        }
+    if (argc > 2) {
+        test_iterations[0] = atoi(argv[2]);
+        test_iterations[1] = test_iterations[0];
+        test_iterations[2] = test_iterations[0];
+    }
+    if (argc > 3) {
+        test_iterations[3] = atoi(argv[3]);
     }
 
     // init random number generator
@@ -362,56 +366,68 @@ int main(int argc, char *argv[]) {
         minVc = std::min(minVc, elapsed_seconds.count());
     }
 
+    if (test_iterations[0] > 0) {
     printf("[nbody Vc 01]:\t\t[%.6f] seconds\n", minVc);
     printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc));
 
     // Write sample results
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
     printf("\n");
+    }
 
 
     //
     // Compute the result using Vc over std::vector objects with simdize; report the minimum time
     //
-    minVc = 1e30;
-    for (unsigned int i = 0; i < test_iterations[0]; ++i) {
+    double minVc02 = 1e30;
+    for (unsigned int i = 0; i < test_iterations[1]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_02(numSrcs, svsx, svsy, svsz, svssx, svssy, svssz, svsr,
                     numTargs, tx, ty, tz, tr, tax, tay, taz);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
-        minVc = std::min(minVc, elapsed_seconds.count());
+        minVc02 = std::min(minVc02, elapsed_seconds.count());
     }
 
-    printf("[nbody Vc 02]:\t\t[%.6f] seconds\n", minVc);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc));
+    if (test_iterations[1] > 0) {
+    printf("[nbody Vc 02]:\t\t[%.6f] seconds\n", minVc02);
+    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc02));
 
     // Write sample results
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
     printf("\n");
 
+    // accumulate minimum
+    minVc = std::min(minVc, minVc02);
+    }
+
 
     //
     // Compute the result using Vc over std::vector objects with copying; report the minimum time
     //
-    minVc = 1e30;
-    for (unsigned int i = 0; i < test_iterations[0]; ++i) {
+    double minVc03 = 1e30;
+    for (unsigned int i = 0; i < test_iterations[2]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_Vc_03(numSrcs, svsx, svsy, svsz, svssx, svssy, svssz, svsr,
                     numTargs, tx, ty, tz, tr, tax, tay, taz);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
-        minVc = std::min(minVc, elapsed_seconds.count());
+        minVc03 = std::min(minVc03, elapsed_seconds.count());
     }
 
-    printf("[nbody Vc 03]:\t\t[%.6f] seconds\n", minVc);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc));
+    if (test_iterations[2] > 0) {
+    printf("[nbody Vc 03]:\t\t[%.6f] seconds\n", minVc03);
+    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc03));
 
     // Write sample results
     for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
     printf("\n");
+
+    // accumulate minimum
+    minVc = std::min(minVc, minVc03);
+    }
 
     // save results for error estimate
     std::vector<float> tax_vec(tax, tax+numTargs);
@@ -422,7 +438,7 @@ int main(int argc, char *argv[]) {
     // And run the serial implementation a few times, again reporting the minimum
     //
     double minSerial = 1e30;
-    for (unsigned int i = 0; i < test_iterations[1]; ++i) {
+    for (unsigned int i = 0; i < test_iterations[3]; ++i) {
         auto start = std::chrono::system_clock::now();
         nbody_serial(numSrcs, sx, sy, sz, ssx, ssy, ssz, sr,
                      numTargs, tx, ty, tz, tr, tax, tay, taz);
@@ -432,6 +448,7 @@ int main(int argc, char *argv[]) {
         minSerial = std::min(minSerial, elapsed_seconds.count());
     }
 
+    if (test_iterations[3] > 0) {
     printf("[nbody serial]:\t\t[%.6f] seconds\n", minSerial);
     printf("               \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minSerial));
 
@@ -450,9 +467,12 @@ int main(int argc, char *argv[]) {
     }
 
     // final echo
-    printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
-    printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+    if (test_iterations[0] > 0) {
+        printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
+        printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+    }
 #endif
+    }
 
     return 0;
 }
