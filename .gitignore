@@ -35,3 +35,9 @@ nvortex3domp
 *.exe
 *.out
 *.app
+
+# build dirs
+Build*
+Release*
+Debug*
+RelDbg*
