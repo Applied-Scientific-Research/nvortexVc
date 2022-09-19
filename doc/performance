@@ -176,3 +176,14 @@ g++ -O3 -mavx2 -mfma -I/data/opt/Vc/include -fopenmp -o nvortex3domp nvortex3d.c
 
 			(12.120x speedup using Vc)
 
+
+On AMD FX(tm)-9590 Eight-Core Processor
+Linux rot 4.16.0-0.bpo.2-amd64 #1 SMP Debian 4.16.16-2~bpo9+1 (2018-06-26) x86_64 GNU/Linux
+g++ (Debian 6.3.0-18+deb9u1) 6.3.0 20170516
+prob running at 4.715 GHz
+
+./nvortex3d -n=30000 8 2
+27.161561
+./nvortex3domp -n=30000 8 2
+103.523176
+
