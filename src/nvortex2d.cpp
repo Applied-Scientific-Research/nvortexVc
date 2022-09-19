@@ -17,6 +17,9 @@
 #include <algorithm>
 #include <random>
 #include <chrono>
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 
 #ifdef USE_VC
 using Vc::float_v;
@@ -268,16 +271,13 @@ static void usage() {
 int main(int argc, char *argv[]) {
 
     static unsigned int test_iterations[] = {4, 4, 4, 2};
-    const int maxGangSize = 16;
-    int numSrcs = maxGangSize*(10000/maxGangSize);
-    int numTargs = maxGangSize*(10000/maxGangSize);
+    int n_in = 10000;
 
     if (argc > 1) {
         if (strncmp(argv[1], "-n=", 3) == 0) {
             int num = atof(argv[1] + 3);
             if (num < 1) usage();
-            numSrcs = maxGangSize*(num/maxGangSize);
-            numTargs = maxGangSize*(num/maxGangSize);
+            n_in = num;
         }
     }
     if (argc > 2) {
@@ -289,6 +289,22 @@ int main(int argc, char *argv[]) {
         test_iterations[3] = atoi(argv[3]);
     }
 
+#ifdef USE_MPI
+    (void) MPI_Init(&argc, &argv);
+
+    int nproc = -1;
+    (void) MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+    int iproc = -1;
+    (void) MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
+    if (iproc==0) std::cout << "MPI-capable binary" << std::endl;
+    std::cout << "Proc " << iproc << " of " << nproc << std::endl;
+#endif
+
+    // set problem size
+    const int maxGangSize = 16;		// this is 512 bits / 32 bits per float
+    int numSrcs = maxGangSize*(n_in/maxGangSize);
+    int numTargs = maxGangSize*(n_in/maxGangSize);
+
     // init random number generator
     std::random_device rd;  //Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -296,10 +312,10 @@ int main(int argc, char *argv[]) {
 
     // allocate original particle data (used for x86 reference calculation)
 
-    float *sx = new float[numSrcs];
-    float *sy = new float[numSrcs];
-    float *ss = new float[numSrcs];
-    float *sr = new float[numSrcs];
+    float* sx = new float[numSrcs];
+    float* sy = new float[numSrcs];
+    float* ss = new float[numSrcs];
+    float* sr = new float[numSrcs];
     for (int i = 0; i < numSrcs; i++) {
         sx[i] = zmean_dist(gen);
         sy[i] = zmean_dist(gen);
@@ -307,11 +323,11 @@ int main(int argc, char *argv[]) {
         sr[i] = 1.0 / std::sqrt((float)numSrcs);
     }
 
-    float *tx = new float[numTargs];
-    float *ty = new float[numTargs];
-    float *tr = new float[numTargs];
-    float *tax = new float[numTargs];
-    float *tay = new float[numTargs];
+    float* tx = new float[numTargs];
+    float* ty = new float[numTargs];
+    float* tr = new float[numTargs];
+    float* tax = new float[numTargs];
+    float* tay = new float[numTargs];
     for (int i = 0; i < numTargs; i++) {
         tx[i] = zmean_dist(gen);
         ty[i] = zmean_dist(gen);
@@ -482,6 +498,10 @@ int main(int argc, char *argv[]) {
     }
 #endif
     }
+
+#ifdef USE_MPI
+    MPI_Finalize();
+#endif
 
     return 0;
 }

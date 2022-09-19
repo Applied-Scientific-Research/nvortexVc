@@ -1,6 +1,7 @@
 # nvortexVc
 Direct Biot-Savart solver for 2D and 3D vortex blobs accelerated with Vc
 
+
 ### Build and run
 This should be easy on a Linux host, but first you may want to build and install [Vc](https://github.com/VcDevel/Vc).
 
@@ -29,6 +30,20 @@ Run the code with one argument: the number of particles to use.
 
     nvortex2d -n=10000
     nvortex3d -n=10000
+
+
+### Parallel runs
+To generate a distributed-memory build using MPI, first ensure that MPI is visible. This is typically accomplished with something like
+
+    sudo dnf install open-mpi openmpi-devel
+    module load mpi
+
+Then in CMake, set `USE_MPI=ON` and generate the build. Run with something like
+
+    OMP_NUM_THREADS=1 mpirun -v -n 2 ./nvortex3d.bin -n=10000
+
+This will run two processes, each with one OpenMP thread.
+
 
 ### Performance
 Performance of this algorithm accelerated with Vc is slightly better than from my [SimdNBodyKernels](https://github.com/markstock/SimdNBodyKernels) code which uses Intel's [ispc](https://github.com/ispc/ispc/) compiler, and the code here is easier to create and understand. A little care must be taken to pad arrays with proper values (padded particle radius must be nonzero), lest the inner kernel try to divide by zero when using the last vector register set of particles.

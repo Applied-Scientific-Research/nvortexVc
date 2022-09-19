@@ -10,6 +10,7 @@ IF (NOT CMAKE_BUILD_TYPE)
 ENDIF ()
 SET (CMAKE_BUILD_TYPE "Release" CACHE STRING "Select which configuration to build")
 SET (USE_OMP FALSE CACHE BOOL "Use OpenMP multithreading")
+SET (USE_MPI FALSE CACHE BOOL "Use MPI distributed-memory multitasking")
 SET (USE_VC FALSE CACHE BOOL "Use Vc for vector arithmetic")
 SET (CMAKE_VERBOSE_MAKEFILE on)
 SET (CMAKE_EXPORT_COMPILE_COMMANDS on)
@@ -18,6 +19,7 @@ IF( NOT CMAKE_BUILD_TYPE )
   SET( CMAKE_BUILD_TYPE "Release" )
 ENDIF()
 
+# split on compiler family
 IF( CMAKE_COMPILER_IS_GNUCXX )
   ADD_COMPILE_OPTIONS( -Wall -Wformat -std=c++14 )
   IF( CMAKE_BUILD_TYPE STREQUAL "Debug" )
@@ -89,11 +91,22 @@ ENDIF()  # OpenMP for multithreading
 # Vc for explicit vectorization
 IF( USE_VC )
   FIND_PACKAGE( Vc REQUIRED )
-  ADD_COMPILE_DEFINITIONS( USE_VC )
+  ADD_DEFINITIONS(-DUSE_VC)
   INCLUDE_DIRECTORIES( ${Vc_INCLUDE_DIR} )
   # these lines must appear AFTER defining the executables
   TARGET_LINK_LIBRARIES( "nvortex2d.bin" PUBLIC ${Vc_LIBRARIES} )
   TARGET_LINK_LIBRARIES( "nvortex3d.bin" PUBLIC ${Vc_LIBRARIES} )
 ENDIF()  # Vc for explicit vectorization
 
+# more adds for MPI
+IF (USE_MPI)
+  FIND_PACKAGE(MPI REQUIRED)
+  # mpi is a library and does not set a compile-time variable
+  ADD_DEFINITIONS(-DUSE_MPI)
+  # this is for openmpi
+  ADD_DEFINITIONS(-DOMPI_SKIP_MPICXX)
+  # add the mpi library
+  TARGET_LINK_LIBRARIES( "nvortex2d.bin" PRIVATE MPI::MPI_C )
+  TARGET_LINK_LIBRARIES( "nvortex3d.bin" PRIVATE MPI::MPI_C )
+ENDIF()  # MPI for distributed memory parallelism
 
