@@ -187,3 +187,36 @@ prob running at 4.715 GHz
 ./nvortex3domp -n=30000 8 2
 103.523176
 
+
+MPI performance vs. OpenMP performance, dual-core Intel i5
+
+Release931
+OMP_NUM_THREADS=2 ./nvortex3d.bin -n=30000 4 2
+  0.235978	[114.417602] GFlop/s
+  0.238416
+  0.237394
+  2.460096  [10.975180] GFlop/s
+  10.425x speedup using Vc
+Release931mpi
+OMP_NUM_THREADS=1 mpirun -n 2 ./nvortex3d.bin -n=30000 4 2
+  0.232859  [116.073762] GFlop/s
+  0.237892
+  0.241372
+  2.547849  [10.608483] GFlop/s
+  10.942x speedup using Vc
+
+Release931
+OMP_NUM_THREADS=4 ./nvortex3d.bin -n=30000 4 2
+  0.220710  [122.332366] GFlop/s
+  0.222616
+  0.225699
+  2.308814  [11.694317] GFlop/s
+  10.461x speedup using Vc
+Release931mpi
+OMP_NUM_THREADS=1 mpirun -n 4 --oversubscribe ./nvortex3d.bin -n=30000 4 2
+  0.239942
+  0.237001  [114.044968] GFlop/s
+  0.242150
+  2.337787  [11.561706] GFlop/s
+  9.864x speedup using Vc
+

@@ -118,9 +118,9 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v* const sx, const Vc::float
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
         }
         // reduce to scalar
-        tax[i] = vtax.sum();
-        tay[i] = vtay.sum();
-        taz[i] = vtaz.sum();
+        tax[i] += vtax.sum();
+        tay[i] += vtay.sum();
+        taz[i] += vtaz.sum();
     }
 }
 
@@ -169,9 +169,9 @@ void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
             ++srit;
         }
         // reduce to scalar
-        tax[i] = vtax.sum();
-        tay[i] = vtay.sum();
-        taz[i] = vtaz.sum();
+        tax[i] += vtax.sum();
+        tay[i] += vtay.sum();
+        taz[i] += vtaz.sum();
     }
 }
 
@@ -218,9 +218,9 @@ void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const 
                                vtx, vty, vtz, vtr, &vtax, &vtay, &vtaz);
         }
         // reduce to scalar
-        tax[i] = vtax.sum();
-        tay[i] = vtay.sum();
-        taz[i] = vtaz.sum();
+        tax[i] += vtax.sum();
+        tay[i] += vtay.sum();
+        taz[i] += vtaz.sum();
     }
 }
 
@@ -445,6 +445,9 @@ int main(int argc, char *argv[]) {
     //std::cout << "  proc " << iproc << " always sending to " << ito << " and receiving from " << ifrom << std::endl;
 #endif
 
+    // allocate target particle data
+    //Targets trg = Targets(numTargs);
+    //trg.init_rand(gen);
     float* tx = new float[numTargs];
     float* ty = new float[numTargs];
     float* tz = new float[numTargs];
@@ -452,61 +455,88 @@ int main(int argc, char *argv[]) {
     float* tax = new float[numTargs];
     float* tay = new float[numTargs];
     float* taz = new float[numTargs];
-    for (int i = 0; i < numTargs; i++) {
-        tx[i] = zmean_dist(gen);
-        ty[i] = zmean_dist(gen);
-        tz[i] = zmean_dist(gen);
-        tr[i] = 1.0 / std::sqrt((float)numTargs);
-        tax[i] = 0.0;
-        tay[i] = 0.0;
-        taz[i] = 0.0;
-    }
-
-    // allocate vectorized particle data
+    for (int i=0; i<numTargs; i++) tx[i] = zmean_dist(gen);
+    for (int i=0; i<numTargs; i++) ty[i] = zmean_dist(gen);
+    for (int i=0; i<numTargs; i++) tz[i] = zmean_dist(gen);
+    for (int i=0; i<numTargs; i++) tr[i] = 1.0 / std::sqrt((float)numTargs);
 
 #ifdef USE_VC
-    // vectorize over arrays of float_v types
-    Vc::float_v* vsx = floatarry_to_floatvarry(src.x, numSrcs, 0.0);
-    Vc::float_v* vsy = floatarry_to_floatvarry(src.y, numSrcs, 0.0);
-    Vc::float_v* vsz = floatarry_to_floatvarry(src.z, numSrcs, 0.0);
-    Vc::float_v* vssx = floatarry_to_floatvarry(src.sx, numSrcs, 0.0);
-    Vc::float_v* vssy = floatarry_to_floatvarry(src.sy, numSrcs, 0.0);
-    Vc::float_v* vssz = floatarry_to_floatvarry(src.sz, numSrcs, 0.0);
-    Vc::float_v* vsr = floatarry_to_floatvarry(src.r, numSrcs, 1.0);
-
-    // vectorize over standard library vector objects
-    VectorF svsx(src.x, src.x+numSrcs);
-    VectorF svsy(src.y, src.y+numSrcs);
-    VectorF svsz(src.z, src.z+numSrcs);
-    VectorF svssx(src.sx, src.sx+numSrcs);
-    VectorF svssy(src.sy, src.sy+numSrcs);
-    VectorF svssz(src.sz, src.sz+numSrcs);
-    VectorF svsr(src.r, src.r+numSrcs);
-
-
     //
     // Compute the result using the Vc implementation; report the minimum time
     //
     double minVc = 1e30;
     for (unsigned int i = 0; i < test_iterations[0]; ++i) {
         auto start = std::chrono::system_clock::now();
+
+        // zero the vels
+        for (int j=0; j<numTargs; ++j) tax[j] = 0.0;
+        for (int j=0; j<numTargs; ++j) tay[j] = 0.0;
+        for (int j=0; j<numTargs; ++j) taz[j] = 0.0;
+
+#ifdef USE_MPI
+        // first set to compute is self
+        ptr.shallow_copy(src);
+
+        for (int ibatch=0; ibatch<nproc ; ++ibatch) {
+            // post non-blocking sends (from ptr) and receives (into buf)
+            if (ibatch < nproc-1) {
+                exchange_sources(ptr, ito, buf, ifrom, xfers);
+            }
+
+            Vc::float_v* vsx = floatarry_to_floatvarry(ptr.x, ptr.n, 0.0);
+            Vc::float_v* vsy = floatarry_to_floatvarry(ptr.y, ptr.n, 0.0);
+            Vc::float_v* vsz = floatarry_to_floatvarry(ptr.z, ptr.n, 0.0);
+            Vc::float_v* vssx = floatarry_to_floatvarry(ptr.sx, ptr.n, 0.0);
+            Vc::float_v* vssy = floatarry_to_floatvarry(ptr.sy, ptr.n, 0.0);
+            Vc::float_v* vssz = floatarry_to_floatvarry(ptr.sz, ptr.n, 0.0);
+            Vc::float_v* vsr = floatarry_to_floatvarry(ptr.r, ptr.n, 1.0);
+
+            // run the O(N^2) calculation concurrently using ptr for sources
+            nbody_Vc_01(ptr.n, vsx, vsy, vsz, vssx, vssy, vssz, vsr,
+                        numTargs, tx, ty, tz, tr, tax, tay, taz);
+
+            // wait for new data to arrive before continuing
+            if (ibatch < nproc-1) {
+                // wait on all 14 transfers to complete
+                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // copy buf to work
+                work.deep_copy(buf);
+                // ptr now points at work
+                ptr.shallow_copy(work);
+            }
+        }
+
+        // and to ensure correct timings, wait for all MPI processes to finish
+        MPI_Barrier(MPI_COMM_WORLD);
+#else
+        // vectorize over arrays of float_v types (used in Vc01)
+        Vc::float_v* vsx = floatarry_to_floatvarry(src.x, numSrcs, 0.0);
+        Vc::float_v* vsy = floatarry_to_floatvarry(src.y, numSrcs, 0.0);
+        Vc::float_v* vsz = floatarry_to_floatvarry(src.z, numSrcs, 0.0);
+        Vc::float_v* vssx = floatarry_to_floatvarry(src.sx, numSrcs, 0.0);
+        Vc::float_v* vssy = floatarry_to_floatvarry(src.sy, numSrcs, 0.0);
+        Vc::float_v* vssz = floatarry_to_floatvarry(src.sz, numSrcs, 0.0);
+        Vc::float_v* vsr = floatarry_to_floatvarry(src.r, numSrcs, 1.0);
+
         nbody_Vc_01(numSrcs, vsx, vsy, vsz, vssx, vssy, vssz, vsr,
                     numTargs, tx, ty, tz, tr, tax, tay, taz);
+#endif
+
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
-        printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
+        if (iproc==0) printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
         minVc = std::min(minVc, elapsed_seconds.count());
     }
 
     if (test_iterations[0] > 0 and iproc==0) {
-    printf("[nbody Vc 01]:\t\t[%.6f] seconds\n", minVc);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc));
+        printf("[nbody Vc 01]:\t\t[%.6f] seconds\n", minVc);
+        printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minVc));
 
-    // Write sample results
-    if (iproc==0) {
-        for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
-        printf("\n");
-    }
+        // Write sample results
+        if (iproc==0) {
+            for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+            printf("\n");
+        }
     }
 
 
@@ -516,26 +546,79 @@ int main(int argc, char *argv[]) {
     double minVc02 = 1e30;
     for (unsigned int i = 0; i < test_iterations[1]; ++i) {
         auto start = std::chrono::system_clock::now();
+
+        // zero the vels
+        for (int j=0; j<numTargs; ++j) tax[j] = 0.0;
+        for (int j=0; j<numTargs; ++j) tay[j] = 0.0;
+        for (int j=0; j<numTargs; ++j) taz[j] = 0.0;
+
+#ifdef USE_MPI
+        // first set to compute is self
+        ptr.shallow_copy(src);
+
+        for (int ibatch=0; ibatch<nproc ; ++ibatch) {
+            // post non-blocking sends (from ptr) and receives (into buf)
+            if (ibatch < nproc-1) {
+                exchange_sources(ptr, ito, buf, ifrom, xfers);
+            }
+
+            VectorF svsx(ptr.x, ptr.x+ptr.n);
+            VectorF svsy(ptr.y, ptr.y+ptr.n);
+            VectorF svsz(ptr.z, ptr.z+ptr.n);
+            VectorF svssx(ptr.sx, ptr.sx+ptr.n);
+            VectorF svssy(ptr.sy, ptr.sy+ptr.n);
+            VectorF svssz(ptr.sz, ptr.sz+ptr.n);
+            VectorF svsr(ptr.r, ptr.r+ptr.n);
+
+            // run the O(N^2) calculation concurrently using ptr for sources
+            nbody_Vc_02(ptr.n, svsx, svsy, svsz, svssx, svssy, svssz, svsr,
+                        numTargs, tx, ty, tz, tr, tax, tay, taz);
+
+            // wait for new data to arrive before continuing
+            if (ibatch < nproc-1) {
+                // wait on all 14 transfers to complete
+                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // copy buf to work
+                work.deep_copy(buf);
+                // ptr now points at work
+                ptr.shallow_copy(work);
+            }
+        }
+
+        // and to ensure correct timings, wait for all MPI processes to finish
+        MPI_Barrier(MPI_COMM_WORLD);
+#else
+        // vectorize over standard library vector objects (used in Vc02 and Vc03)
+        VectorF svsx(src.x, src.x+numSrcs);
+        VectorF svsy(src.y, src.y+numSrcs);
+        VectorF svsz(src.z, src.z+numSrcs);
+        VectorF svssx(src.sx, src.sx+numSrcs);
+        VectorF svssy(src.sy, src.sy+numSrcs);
+        VectorF svssz(src.sz, src.sz+numSrcs);
+        VectorF svsr(src.r, src.r+numSrcs);
+
         nbody_Vc_02(numSrcs, svsx, svsy, svsz, svssx, svssy, svssz, svsr,
                     numTargs, tx, ty, tz, tr, tax, tay, taz);
+#endif
+
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
-        printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
+        if (iproc==0) printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
         minVc02 = std::min(minVc02, elapsed_seconds.count());
     }
 
     if (test_iterations[1] > 0 and iproc==0) {
-    printf("[nbody Vc 02]:\t\t[%.6f] seconds\n", minVc02);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc02));
+        printf("[nbody Vc 02]:\t\t[%.6f] seconds\n", minVc02);
+        printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minVc02));
 
-    // Write sample results
-    if (iproc==0) {
-        for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
-        printf("\n");
-    }
+        // Write sample results
+        if (iproc==0) {
+            for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+            printf("\n");
+        }
 
-    // accumulate minimum
-    minVc = std::min(minVc, minVc02);
+        // accumulate minimum
+        minVc = std::min(minVc, minVc02);
     }
 
 
@@ -545,26 +628,79 @@ int main(int argc, char *argv[]) {
     double minVc03 = 1e30;
     for (unsigned int i = 0; i < test_iterations[2]; ++i) {
         auto start = std::chrono::system_clock::now();
+
+        // zero the vels
+        for (int j=0; j<numTargs; ++j) tax[j] = 0.0;
+        for (int j=0; j<numTargs; ++j) tay[j] = 0.0;
+        for (int j=0; j<numTargs; ++j) taz[j] = 0.0;
+
+#ifdef USE_MPI
+        // first set to compute is self
+        ptr.shallow_copy(src);
+
+        for (int ibatch=0; ibatch<nproc ; ++ibatch) {
+            // post non-blocking sends (from ptr) and receives (into buf)
+            if (ibatch < nproc-1) {
+                exchange_sources(ptr, ito, buf, ifrom, xfers);
+            }
+
+            VectorF svsx(ptr.x, ptr.x+ptr.n);
+            VectorF svsy(ptr.y, ptr.y+ptr.n);
+            VectorF svsz(ptr.z, ptr.z+ptr.n);
+            VectorF svssx(ptr.sx, ptr.sx+ptr.n);
+            VectorF svssy(ptr.sy, ptr.sy+ptr.n);
+            VectorF svssz(ptr.sz, ptr.sz+ptr.n);
+            VectorF svsr(ptr.r, ptr.r+ptr.n);
+
+            // run the O(N^2) calculation concurrently using ptr for sources
+            nbody_Vc_03(ptr.n, svsx, svsy, svsz, svssx, svssy, svssz, svsr,
+                        numTargs, tx, ty, tz, tr, tax, tay, taz);
+
+            // wait for new data to arrive before continuing
+            if (ibatch < nproc-1) {
+                // wait on all 14 transfers to complete
+                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // copy buf to work
+                work.deep_copy(buf);
+                // ptr now points at work
+                ptr.shallow_copy(work);
+            }
+        }
+
+        // and to ensure correct timings, wait for all MPI processes to finish
+        MPI_Barrier(MPI_COMM_WORLD);
+#else
+        // vectorize over standard library vector objects (used in Vc02 and Vc03)
+        VectorF svsx(src.x, src.x+numSrcs);
+        VectorF svsy(src.y, src.y+numSrcs);
+        VectorF svsz(src.z, src.z+numSrcs);
+        VectorF svssx(src.sx, src.sx+numSrcs);
+        VectorF svssy(src.sy, src.sy+numSrcs);
+        VectorF svssz(src.sz, src.sz+numSrcs);
+        VectorF svsr(src.r, src.r+numSrcs);
+
         nbody_Vc_03(numSrcs, svsx, svsy, svsz, svssx, svssy, svssz, svsr,
                     numTargs, tx, ty, tz, tr, tax, tay, taz);
+#endif
+
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
-        printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
+        if (iproc==0) printf("@time of Vc run:\t\t\t[%.6f] seconds\n", (float)elapsed_seconds.count());
         minVc03 = std::min(minVc03, elapsed_seconds.count());
     }
 
     if (test_iterations[2] > 0 and iproc==0) {
-    printf("[nbody Vc 03]:\t\t[%.6f] seconds\n", minVc03);
-    printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per/(1.e+9*minVc03));
+        printf("[nbody Vc 03]:\t\t[%.6f] seconds\n", minVc03);
+        printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minVc03));
 
-    // Write sample results
-    if (iproc==0) {
-        for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
-        printf("\n");
-    }
+        // Write sample results
+        if (iproc==0) {
+            for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+            printf("\n");
+        }
 
-    // accumulate minimum
-    minVc = std::min(minVc, minVc03);
+        // accumulate minimum
+        minVc = std::min(minVc, minVc03);
     }
 
     // save results for error estimate
@@ -634,17 +770,17 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef USE_VC
-    // calculate error estimate
-    std::vector<float> tax_x86(tax, tax+numTargs);
-    float numer = 0.0;
-    float denom = 0.0;
-    for (size_t i=0; i<tax_vec.size(); ++i) {
-        numer += std::pow(tax_vec[i]-tax_x86[i], 2);
-        denom += std::pow(tax_x86[i], 2);
-    }
-
-    // final echo
     if (test_iterations[0] > 0) {
+        // calculate error estimate
+        std::vector<float> tax_x86(tax, tax+numTargs);
+        float numer = 0.0;
+        float denom = 0.0;
+        for (size_t i=0; i<tax_vec.size(); ++i) {
+            numer += std::pow(tax_vec[i]-tax_x86[i], 2);
+            denom += std::pow(tax_x86[i], 2);
+        }
+
+        // final echo
         printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
         printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
     }
