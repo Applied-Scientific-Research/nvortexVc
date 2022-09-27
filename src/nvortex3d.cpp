@@ -51,12 +51,20 @@ static inline void nbody_kernel_serial(const float sx, const float sy, const flo
     *taz += r2 * (dy*ssx - dx*ssy);
 }
 
-void nbody_serial(const int numSrcs, const float* const __restrict__ sx, const float* const __restrict__ sy, const float* const __restrict__ sz,
-                                     const float* const __restrict__ ssx,const float* const __restrict__ ssy,const float* const __restrict__ ssz,
+void nbody_serial(const int numSrcs, const float* const __restrict__ sx,
+                                     const float* const __restrict__ sy,
+                                     const float* const __restrict__ sz,
+                                     const float* const __restrict__ ssx,
+                                     const float* const __restrict__ ssy,
+                                     const float* const __restrict__ ssz,
                                      const float* const __restrict__ sr,
-                  const int numTarg, const float* const __restrict__ tx, const float* const __restrict__ ty, const float* const __restrict__ tz,
+                  const int numTarg, const float* const __restrict__ tx,
+                                     const float* const __restrict__ ty,
+                                     const float* const __restrict__ tz,
                                      const float* const __restrict__ tr,
-                                     float* const __restrict__ tax, float* const __restrict__ tay, float* const __restrict__ taz) {
+                                     float* const __restrict__ tax,
+                                     float* const __restrict__ tay,
+                                     float* const __restrict__ taz) {
 
     #pragma omp parallel for
     for (int i = 0; i < numTarg; i++) {
@@ -370,7 +378,7 @@ void exchange_sources(const Sources& sendsrcs, const int ito,
 #endif
 
 static void usage() {
-    fprintf(stderr, "Usage: nbody [-n=<number>] [simd iterations] [serial iterations]\n");
+    fprintf(stderr, "Usage: nvortex3d.bin [-n=<number>] [simd iterations] [serial iterations]\n");
     exit(1);
 }
 
@@ -440,8 +448,9 @@ int main(int argc, char *argv[]) {
     // always pull from left (-), send to right (+)
     const int ifrom = (iproc == 0) ? nproc-1 : iproc-1;
     const int ito = (iproc == nproc-1) ? 0 : iproc+1;
-    MPI_Request* xfers = new MPI_Request[14];
-    for (int ix=0; ix<14; ++ix) xfers[ix] = MPI_REQUEST_NULL;
+    const int nreqs = 14;
+    MPI_Request* xfers = new MPI_Request[nreqs];
+    for (int ix=0; ix<nreqs; ++ix) xfers[ix] = MPI_REQUEST_NULL;
     //std::cout << "  proc " << iproc << " always sending to " << ito << " and receiving from " << ifrom << std::endl;
 #endif
 
@@ -497,8 +506,8 @@ int main(int argc, char *argv[]) {
 
             // wait for new data to arrive before continuing
             if (ibatch < nproc-1) {
-                // wait on all 14 transfers to complete
-                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // wait on all transfers to complete
+                MPI_Waitall(nreqs, xfers, MPI_STATUS_IGNORE);
                 // copy buf to work
                 work.deep_copy(buf);
                 // ptr now points at work
@@ -534,7 +543,7 @@ int main(int argc, char *argv[]) {
 
         // Write sample results
         if (iproc==0) {
-            for (int i = 0; i < 2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+            for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
             printf("\n");
         }
     }
@@ -576,8 +585,8 @@ int main(int argc, char *argv[]) {
 
             // wait for new data to arrive before continuing
             if (ibatch < nproc-1) {
-                // wait on all 14 transfers to complete
-                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // wait on all transfers to complete
+                MPI_Waitall(nreqs, xfers, MPI_STATUS_IGNORE);
                 // copy buf to work
                 work.deep_copy(buf);
                 // ptr now points at work
@@ -658,8 +667,8 @@ int main(int argc, char *argv[]) {
 
             // wait for new data to arrive before continuing
             if (ibatch < nproc-1) {
-                // wait on all 14 transfers to complete
-                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // wait on all transfers to complete
+                MPI_Waitall(nreqs, xfers, MPI_STATUS_IGNORE);
                 // copy buf to work
                 work.deep_copy(buf);
                 // ptr now points at work
@@ -736,8 +745,8 @@ int main(int argc, char *argv[]) {
 
             // wait for new data to arrive before continuing
             if (ibatch < nproc-1) {
-                // wait on all 14 transfers to complete
-                MPI_Waitall(14, xfers, MPI_STATUS_IGNORE);
+                // wait on all transfers to complete
+                MPI_Waitall(nreqs, xfers, MPI_STATUS_IGNORE);
                 // copy buf to work
                 work.deep_copy(buf);
                 // ptr now points at work
