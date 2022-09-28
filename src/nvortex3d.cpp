@@ -420,8 +420,9 @@ int main(int argc, char *argv[]) {
     const int numTargs = numSrcs;
 
     // init random number generator
-    std::random_device rd;  //Will be used to obtain a seed for the random number engine
-    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    //std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    //std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    std::mt19937 gen(12345); //Standard mersenne_twister_engine seeded with rd()
     std::uniform_real_distribution<> zmean_dist(-1.0, 1.0);
 
     // allocate original particle data (used for x86 reference calculation)
@@ -535,10 +536,8 @@ int main(int argc, char *argv[]) {
         printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minVc));
 
         // Write sample results
-        if (iproc==0) {
-            for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
-            printf("\n");
-        }
+        for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+        printf("\n");
     }
 
 
@@ -614,10 +613,8 @@ int main(int argc, char *argv[]) {
         printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minVc02));
 
         // Write sample results
-        if (iproc==0) {
-            for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
-            printf("\n");
-        }
+        for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+        printf("\n");
 
         // accumulate minimum
         minVc = std::min(minVc, minVc02);
@@ -696,10 +693,8 @@ int main(int argc, char *argv[]) {
         printf("              \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minVc03));
 
         // Write sample results
-        if (iproc==0) {
-            for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
-            printf("\n");
-        }
+        for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
+        printf("\n");
 
         // accumulate minimum
         minVc = std::min(minVc, minVc03);
@@ -707,7 +702,7 @@ int main(int argc, char *argv[]) {
 
     // save results for error estimate
     std::vector<float> tax_vec(tax, tax+numTargs);
-#endif
+#endif	// USE_VC
 
 
     //
@@ -762,17 +757,16 @@ int main(int argc, char *argv[]) {
     }
 
     if (test_iterations[3] > 0 and iproc==0) {
-    printf("[nbody serial]:\t\t[%.6f] seconds\n", minSerial);
-    printf("               \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minSerial));
+        printf("[nbody serial]:\t\t[%.6f] seconds\n", minSerial);
+        printf("               \t\t[%.6f] GFlop/s\n", (float)numSrcs*numTargs*num_flops_per*nproc*nproc/(1.e+9*minSerial));
 
-    // Write sample results
-    if (iproc==0) {
+        // Write sample results
         for (int i=0; i<2; i++) printf("   particle %d vel %g %g %g\n",i,tax[i],tay[i],taz[i]);
         printf("\n");
     }
 
 #ifdef USE_VC
-    if (test_iterations[0] > 0) {
+    if (test_iterations[0] > 0 and test_iterations[3] > 0) {
         // calculate error estimate
         std::vector<float> tax_x86(tax, tax+numTargs);
         float numer = 0.0;
@@ -783,11 +777,12 @@ int main(int argc, char *argv[]) {
         }
 
         // final echo
-        printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
-        printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+        if (iproc==0) {
+            printf("\t\t\t(%.3fx speedup using Vc)\n", minSerial/minVc);
+            printf("\t\t\t(%.6f RMS error using simd)\n", std::sqrt(numer/denom));
+        }
     }
 #endif
-    }
 
 #ifdef USE_MPI
     MPI_Finalize();
