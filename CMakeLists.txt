@@ -44,15 +44,17 @@ ELSEIF( CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
     # cray compiler misidentifies as Clang and needs this instead
     ADD_COMPILE_OPTIONS( -fsave-loopmark -floopmark-style=interspersed )
   ELSE()
-    # real clang needs this
-    ADD_COMPILE_OPTIONS( -stdlib=libc++ )
+    # real clang needs this - OR NOT?!?
+    #ADD_COMPILE_OPTIONS( -stdlib=libc++ )
   ENDIF()
   IF( CMAKE_BUILD_TYPE STREQUAL "Debug" )
     # Debug already includes -O0 -g
     ADD_COMPILE_OPTIONS( -ggdb )
   ELSEIF( CMAKE_BUILD_TYPE STREQUAL "Release" )
     # Release already includes -O3
-    ADD_COMPILE_OPTIONS( -march=native -Ofast -flto )
+    #ADD_COMPILE_OPTIONS( -march=native -Ofast -flto -funroll-loops -fvectorize )
+    #ADD_COMPILE_OPTIONS( -march=native -Ofast -flto )
+    ADD_COMPILE_OPTIONS( -march=native -Ofast )
   ELSEIF( CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" )
     # RelDbg already includes -O2 -g
     ADD_COMPILE_OPTIONS( -march=native -Ofast -ggdb )
