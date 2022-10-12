@@ -44,7 +44,7 @@ static inline void nbody_kernel_serial(const float sx, const float sy, const flo
     *taz += r2 * (dy*ssx - dx*ssy);
 }
 
-void nbody_serial(const int numSrcs, const float* const __restrict__ sx,
+void __attribute__ ((noinline)) nbody_serial(const int numSrcs, const float* const __restrict__ sx,
                                      const float* const __restrict__ sy,
                                      const float* const __restrict__ sz,
                                      const float* const __restrict__ ssx,
@@ -93,7 +93,7 @@ static inline void nbody_kernel_Vc_01(const Vc::float_v sx, const Vc::float_v sy
 }
 
 // compute directly from the array of Vc::float_v objects
-void nbody_Vc_01(const int numSrcs, const Vc::float_v* const sx, const Vc::float_v* const sy, const Vc::float_v* const sz,
+void __attribute__ ((noinline)) nbody_Vc_01(const int numSrcs, const Vc::float_v* const sx, const Vc::float_v* const sy, const Vc::float_v* const sz,
                                     const Vc::float_v* const ssx,const Vc::float_v* const ssy,const Vc::float_v* const ssz,
                                     const Vc::float_v* sr,
                  const int numTarg, const float* const tx, const float* const ty, const float* const tz,
@@ -126,7 +126,7 @@ void nbody_Vc_01(const int numSrcs, const Vc::float_v* const sx, const Vc::float
 }
 
 // use simdize to read the std::vector as Vc::float_v objects
-void nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const VectorF& sz,
+void __attribute__ ((noinline)) nbody_Vc_02(const int numSrcs, const VectorF& sx, const VectorF& sy, const VectorF& sz,
                                     const VectorF& ssx,const VectorF& ssy,const VectorF& ssz,
                                     const VectorF& sr,
                  const int numTarg, const float* const tx, const float* const ty, const float* const tz,
@@ -185,7 +185,7 @@ inline const Vc::Memory<Vc::float_v> stdvec_to_floatvvec (const VectorF& in, con
 }
 
 // fully convert all std::vector to temporary Vc::float_v containers
-void nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const VectorF& sz,
+void __attribute__ ((noinline)) nbody_Vc_03(const int numSrcs, const VectorF& sx, const VectorF& sy, const VectorF& sz,
                                     const VectorF& ssx,const VectorF& ssy,const VectorF& ssz,
                                     const VectorF& sr,
                  const int numTarg, const float* const tx, const float* const ty, const float* const tz,
@@ -253,13 +253,13 @@ inline Vc::float_v* floatarry_to_floatvarry (const float* const in, const int n,
 #endif
 
 // not really alignment, just minimum block sizes
-int buffer(const int _n, const int _align) {
+inline int buffer(const int _n, const int _align) {
   // 63,64 returns 1*64; 64,64 returns 1*64; 65,64 returns 2*64=128
   return _align*((_n+_align-1)/_align);
 }
 
 // distribute ntotal items across nproc processes, now how many are on proc iproc?
-int nthisproc(const int ntotal, const int iproc, const int nproc) {
+inline int nthisproc(const int ntotal, const int iproc, const int nproc) {
   const int base_nper = ntotal / nproc;
   return (iproc < (ntotal-base_nper*nproc)) ? base_nper+1 : base_nper;
 }
@@ -344,7 +344,7 @@ struct Sources {
 
 #ifdef USE_MPI
 // non-class method to swap sources
-void exchange_sources(const Sources& sendsrcs, const int ito,
+void __attribute__ ((noinline)) exchange_sources(const Sources& sendsrcs, const int ito,
                             Sources& recvsrcs, const int ifrom,
                             MPI_Request* handle) {
 
@@ -370,7 +370,7 @@ void exchange_sources(const Sources& sendsrcs, const int ito,
 }
 #endif
 
-static void usage() {
+static inline void usage() {
     fprintf(stderr, "Usage: nvortex3d.bin [-n=<number>] [simd iterations] [serial iterations]\n");
     exit(1);
 }
