@@ -28,8 +28,8 @@ Replace the above `cmake` command with one of the following to allow build with 
 
 Run the code with one argument: the number of particles to use.
 
-    nvortex2d -n=10000
-    nvortex3d -n=10000
+    ./nvortex2d.bin -n=10000
+    ./nvortex3d.bin -n=10000
 
 
 ### Parallel runs
