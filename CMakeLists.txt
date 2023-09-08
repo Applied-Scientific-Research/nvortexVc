@@ -77,6 +77,7 @@ ENDIF()
 # build these two bins
 ADD_EXECUTABLE( "nvortex2d.bin" "src/nvortex2d.cpp" )
 ADD_EXECUTABLE( "nvortex3d.bin" "src/nvortex3d.cpp" )
+ADD_EXECUTABLE( "ngrav3d.bin" "src/ngrav3d.cpp" )
 
 # OpenMP for multithreading
 IF( USE_OMP )
@@ -87,6 +88,7 @@ IF( USE_OMP )
   FIND_PACKAGE( OpenMP REQUIRED )
   TARGET_LINK_LIBRARIES( "nvortex2d.bin" PUBLIC OpenMP::OpenMP_CXX)
   TARGET_LINK_LIBRARIES( "nvortex3d.bin" PUBLIC OpenMP::OpenMP_CXX)
+  TARGET_LINK_LIBRARIES( "ngrav3d.bin" PUBLIC OpenMP::OpenMP_CXX)
   ADD_COMPILE_OPTIONS( ${OpenMP_CXX_FLAGS} )
 ENDIF()  # OpenMP for multithreading
 
@@ -98,6 +100,7 @@ IF( USE_VC )
   # these lines must appear AFTER defining the executables
   TARGET_LINK_LIBRARIES( "nvortex2d.bin" PUBLIC ${Vc_LIBRARIES} )
   TARGET_LINK_LIBRARIES( "nvortex3d.bin" PUBLIC ${Vc_LIBRARIES} )
+  TARGET_LINK_LIBRARIES( "ngrav3d.bin" PUBLIC ${Vc_LIBRARIES} )
 ENDIF()  # Vc for explicit vectorization
 
 # more adds for MPI
@@ -110,5 +113,6 @@ IF (USE_MPI)
   # add the mpi library
   TARGET_LINK_LIBRARIES( "nvortex2d.bin" PRIVATE MPI::MPI_C )
   TARGET_LINK_LIBRARIES( "nvortex3d.bin" PRIVATE MPI::MPI_C )
+  TARGET_LINK_LIBRARIES( "ngrav3d.bin" PRIVATE MPI::MPI_C )
 ENDIF()  # MPI for distributed memory parallelism
 
