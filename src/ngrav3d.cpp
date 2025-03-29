@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <cassert>
+#include <iostream>
 #include <vector>
 #include <algorithm>
 #include <random>
