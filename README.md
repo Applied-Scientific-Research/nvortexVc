@@ -61,6 +61,7 @@ The table below gives peak performance for the 3D case (with no grads) for combi
 | AMD Ryzen 7 2700X |     4.5    |   47.3  |   42.9    |  289   |   499.2  |        58%       |
 | AMD Ryzen 9 3950X |     6.2    |   62.3  |   86.6    |  790   |  2048    |        39%       |
 | AMD Ryzen 7 5800X |     8.2    |   63.0  |  105.8    |  767   |  1208    |        64%       |
+| AMD Ryzen 9 9900X |    12.8    |  145.6  |  160.9    | 1667   |  3149    |        53%       |
 
 Note that the peak flops rate depends on problem size, number of cores, and cache sizes. For example, the AMD Ryzen 9 3950X can achieve 1154 GFlop/s (56% of theoretical peak) with `nvortex3domp -n=150000`.
 
